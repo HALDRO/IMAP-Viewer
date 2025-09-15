@@ -1,0 +1,9 @@
+gmail.com:imap.gmail.com:993:true|smtp.gmail.com:465:true
+polosmail.com:imap.firstmail.ltd:993:true|mail.polosmail.com:25:false
+rambler.ru:imap.rambler.ru:993:true|smtp.rambler.ru:465:true
+gmx.ch:imap.gmx.net:993:true|mail.gmx.net:587:true
+hotmail.com:outlook.office365.com:993:true|smtp.office365.com:587:true
+vargosmail.com:imap.firstmail.ltd:993:true|mail.vargosmail.com:25:false
+outlook.com:outlook.office365.com:993:true|smtp.office365.com:587:true
+tacoblastmail.com:imap.firstmail.ltd:993:true
+fringmail.com:imap.firstmail.ltd:993:true|mail.fringmail.com:587:true

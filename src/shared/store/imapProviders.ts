@@ -1,0 +1,194 @@
+/**
+ * @file Contains a list of common email provider IMAP settings.
+ * This is used for autodetecting server settings when a user adds an account.
+ */
+
+import type { DiscoveredConfig } from "../types/protocol";
+
+interface ImapProvider {
+  name: string;
+  domains: string[];
+  config: DiscoveredConfig;
+}
+
+export const imapProviders: ImapProvider[] = [
+  {
+    name: "Gmail",
+    domains: ["gmail.com", "googlemail.com"],
+    config: {
+      imap: { host: "imap.gmail.com", port: 993, secure: true },
+      smtp: { host: "smtp.gmail.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Outlook",
+    domains: ["outlook.com", "hotmail.com", "live.com", "msn.com"],
+    config: {
+      imap: { host: "outlook.office365.com", port: 993, secure: true },
+      smtp: { host: "smtp.office365.com", port: 587, secure: true }, // STARTTLS
+    },
+  },
+  {
+    name: "Yahoo",
+    domains: ["yahoo.com", "ymail.com", "rocketmail.com"],
+    config: {
+      imap: { host: "imap.mail.yahoo.com", port: 993, secure: true },
+      smtp: { host: "smtp.mail.yahoo.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "iCloud",
+    domains: ["icloud.com", "me.com", "mac.com"],
+    config: {
+      imap: { host: "imap.mail.me.com", port: 993, secure: true },
+      smtp: { host: "smtp.mail.me.com", port: 587, secure: true }, // STARTTLS
+    },
+  },
+  {
+    name: "GMX",
+    domains: ["gmx.com", "gmx.net", "gmx.ch", "gmx.de"],
+    config: {
+      imap: { host: "imap.gmx.net", port: 993, secure: true },
+      smtp: { host: "mail.gmx.net", port: 587, secure: true },
+    },
+  },
+  {
+    name: "AOL",
+    domains: ["aol.com"],
+    config: {
+      imap: { host: "imap.aol.com", port: 993, secure: true },
+      smtp: { host: "smtp.aol.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Zoho Mail",
+    domains: ["zoho.com"],
+    config: {
+      imap: { host: "imappro.zoho.com", port: 993, secure: true },
+      smtp: { host: "smtppro.zoho.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Mail.ru",
+    domains: ["mail.ru", "bk.ru", "list.ru", "inbox.ru"],
+    config: {
+      imap: { host: "imap.mail.ru", port: 993, secure: true },
+      smtp: { host: "smtp.mail.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Yandex",
+    domains: ["yandex.com", "yandex.ru"],
+    config: {
+      imap: { host: "imap.yandex.com", port: 993, secure: true },
+      smtp: { host: "smtp.yandex.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Rambler",
+    domains: ["rambler.ru", "lenta.ru", "autorambler.ru", "myrambler.ru", "ro.ru"],
+    config: {
+      imap: { host: "imap.rambler.ru", port: 993, secure: true },
+      smtp: { host: "smtp.rambler.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "QIP.ru",
+    domains: ["qip.ru"],
+    config: {
+      imap: { host: "imap.qip.ru", port: 993, secure: true },
+      smtp: { host: "smtp.qip.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Pochta.ru",
+    domains: ["pochta.ru"],
+    config: {
+      imap: { host: "imap.pochta.ru", port: 993, secure: true },
+      smtp: { host: "smtp.pochta.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Fastmail",
+    domains: ["fastmail.com", "fastmail.fm"],
+    config: {
+      imap: { host: "imap.fastmail.com", port: 993, secure: true },
+      smtp: { host: "smtp.fastmail.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Mail.ru Extended",
+    domains: ["bizml.ru"],
+    config: {
+      imap: { host: "imap.mail.ru", port: 993, secure: true },
+      smtp: { host: "smtp.mail.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Outlook Extended",
+    domains: ["outlook.de", "outlook.fr", "outlook.it", "outlook.es", "outlook.co.uk", "outlook.jp", "outlook.in", "outlook.com.au", "outlook.com.br", "hotmail.de", "hotmail.fr", "hotmail.it", "hotmail.es", "hotmail.co.uk", "hotmail.jp", "hotmail.in", "hotmail.com.au", "hotmail.com.br"],
+    config: {
+      imap: { host: "outlook.office365.com", port: 993, secure: true },
+      smtp: { host: "smtp.office365.com", port: 587, secure: true },
+    },
+  },
+  {
+    name: "GMX Extended",
+    domains: ["gmx.at", "gmx.fr", "gmx.es", "gmx.it", "gmx.co.uk", "caramail.com", "caramail.fr"],
+    config: {
+      imap: { host: "imap.gmx.com", port: 993, secure: true },
+      smtp: { host: "mail.gmx.com", port: 587, secure: true },
+    },
+  },
+  {
+    name: "NGS.ru",
+    domains: ["ngs.ru", "eml.ru", "mosk.ru", "samara24.ru", "nn.ru", "prm.ru"],
+    config: {
+      imap: { host: "mail.ngs.ru", port: 993, secure: true },
+      smtp: { host: "mail.ngs.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Inbox.lv",
+    domains: ["inbox.lv", "inbox.lt", "mail.ee"],
+    config: {
+      imap: { host: "mail.inbox.lv", port: 993, secure: true },
+      smtp: { host: "mail.inbox.lv", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Yandex Extended",
+    domains: ["yandex.by", "yandex.kz", "yandex.ua", "ya.ru", "narod.ru"],
+    config: {
+      imap: { host: "imap.yandex.ru", port: 993, secure: true },
+      smtp: { host: "smtp.yandex.ru", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Mail.com",
+    domains: [
+      "mail.com", "email.com", "usa.com", "myself.com", "consultant.com", "post.com", "europe.com", "asia.com", "iname.com", "writeme.com", "dr.com", "engineer.com", "cheerful.com", "accountant.com", "activist.com", "adexec.com", "allergist.com", "alumni.com", "alumnidirector.com", "appraiser.net", "archaeologist.com", "arcticmail.com", "artlover.com", "auctioneer.net", "bartender.net", "bikerider.com", "birdlover.com", "brew-meister.com", "cash4u.com", "chef.net", "chemist.com", "clerk.com", "clubmember.org", "collector.org", "columnist.com", "comic.com", "computer4u.com", "contractor.net", "coolsite.net", "counsellor.com", "cyberservices.com", "deliveryman.com", "diplomats.com", "disposable.com", "execs.com", "fastservice.com", "financier.com", "fireman.net", "gardener.com", "geologist.com", "graduate.org", "graphic-designer.com", "groupmail.com", "hairdresser.net", "homemail.com", "hot-shot.com", "instruction.com", "instructor.net", "insurer.com", "job4u.com", "journalist.com", "legislator.com", "lobbyist.com", "minister.com", "musician.org", "net-shopping.com", "optician.com", "orthodontist.net", "pediatrician.com", "photographer.net", "physicist.net", "planetmail.com", "planetmail.net", "politician.com", "presidency.com", "priest.com", "programmer.net", "publicist.com", "qualityservice.com", "radiologist.net", "realtyagent.com", "registerednurses.com", "repairman.com", "representative.com", "rescueteam.com", "salesperson.net", "secretary.net", "socialworker.net", "sociologist.com", "solution4u.com", "songwriter.net", "surgical.net", "teachers.org", "tech-center.com", "techie.com", "technologist.com", "theplate.com", "therapist.net", "toothfairy.com", "tvstar.com", "umpire.com", "webname.com", "worker.com", "workmail.com",
+      "2trom.com", "aircraftmail.com", "blader.com", "boardermail.com", "brew-master.com", "bsdmail.com", "catlover.com", "cutey.com", "dbzmail.com", "doglover.com", "doramail.com", "galaxyhit.com", "greenmail.net", "hackermail.com", "hilarious.com", "keromail.com", "kittymail.com", "linuxmail.org", "lovecat.com", "marchmail.com", "nonpartisan.com", "petlover.com", "snakebite.com", "toke.com", "uymail.com", "cyberdude.com", "cybergal.com", "cyber-wizard.com", "housemail.com", "humanoid.net", "inorbit.com", "mail-me.com", "null.net", "rocketship.com", "acdcfan.com", "discofan.com", "elvisfan.com", "hiphopfan.com", "kissfans.com", "madonnafan.com", "metalfan.com", "ninfan.com", "ravemail.com", "reborn.com", "reggaefan.com", "bellair.net", "californiamail.com", "dallasmail.com", "nycmail.com", "pacific-ocean.com", "pacificwest.com", "sanfranmail.com", "africamail.com", "asia-mail.com", "australiamail.com", "berlin.com", "brazilmail.com", "chinamail.com", "dublin.com", "dutchmail.com", "englandmail.com", "europemail.com", "germanymail.com", "irelandmail.com", "israelmail.com", "italymail.com", "koreamail.com", "mexicomail.com", "moscowmail.com", "munich.com", "polandmail.com", "safrica.com", "samerica.com", "scotlandmail.com", "spainmail.com", "swedenmail.com", "swissmail.com", "torontomail.com", "angelic.com", "atheist.com", "disciples.com", "innocent.com", "muslim.com", "protestant.com", "reincarnate.com", "religious.com", "saintly.com"
+    ],
+    config: {
+      imap: { host: "imap.mail.com", port: 993, secure: true },
+      smtp: { host: "smtp.mail.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "Dragons Mail",
+    domains: ["modermail.com", "faunmail.com", "dragonsmail.com", "gutsmail.com", "smarmail.com"],
+    config: {
+      imap: { host: "pop.dragonsmail.com", port: 993, secure: true },
+      smtp: { host: "pop.dragonsmail.com", port: 465, secure: true },
+    },
+  },
+  {
+    name: "FirstMail",
+    domains: ["firstmail.com", "secondmail.com", "thirdmail.com", "fourthmail.com", "fifthmail.com", "sixthmail.com", "seventhmail.com", "eighthmail.com", "ninthmail.com", "tenthmail.com"],
+    config: {
+      imap: { host: "imap.firstmail.ltd", port: 993, secure: true },
+      smtp: { host: "smtp.firstmail.ltd", port: 465, secure: true },
+    },
+  },
+];

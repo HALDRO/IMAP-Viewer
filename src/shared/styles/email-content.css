@@ -1,0 +1,306 @@
+/**
+ * @file CSS styles for email content display
+ * Ensures proper rendering of HTML emails while maintaining security
+ */
+
+.email-content {
+  /* Base styles - use full available space */
+  color: white;
+  line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 1rem;
+  margin: 0;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* Typography */
+.email-content h1,
+.email-content h2,
+.email-content h3,
+.email-content h4,
+.email-content h5,
+.email-content h6 {
+  color: white;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.email-content h1 { font-size: 1.5em; }
+.email-content h2 { font-size: 1.3em; }
+.email-content h3 { font-size: 1.1em; }
+.email-content h4,
+.email-content h5,
+.email-content h6 { font-size: 1em; }
+
+.email-content p {
+  margin-bottom: 1em;
+  color: white;
+}
+
+.email-content strong,
+.email-content b {
+  font-weight: 600;
+  color: white;
+}
+
+.email-content em,
+.email-content i {
+  font-style: italic;
+  color: white;
+}
+
+.email-content u {
+  text-decoration: underline;
+  color: white;
+}
+
+/* Lists */
+.email-content ul,
+.email-content ol {
+  margin: 1em 0;
+  padding-left: 2em;
+  color: white;
+}
+
+.email-content li {
+  margin-bottom: 0.5em;
+  color: white;
+}
+
+/* Links */
+.email-content a {
+  color: #60a5fa;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.email-content a:hover {
+  color: #93c5fd;
+}
+
+/* Images */
+.email-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.5em 0;
+  display: block;
+  background-color: rgba(55, 65, 81, 0.3);
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  padding: 4px;
+}
+
+/* Handle broken images */
+.email-content img[src=""],
+.email-content img:not([src]),
+.email-content img[src*="cid:"] {
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMzc0MTUxIiBzdHJva2U9IiM2Mzc0OEIiIHN0cm9rZS13aWR0aD0iMiIvPgo8cGF0aCBkPSJNMjAgMjBINDRWNDRIMjBWMjBaIiBmaWxsPSIjNjM3NDhCIi8+CjxwYXRoIGQ9Ik0yOCAyOEgzNlYzNkgyOFYyOFoiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 32px 32px;
+  min-height: 64px;
+  min-width: 64px;
+  position: relative;
+}
+
+.email-content img[src=""]::after,
+.email-content img:not([src])::after,
+.email-content img[src*="cid:"]::after {
+  content: "Image not available";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #9CA3AF;
+  font-size: 12px;
+  text-align: center;
+  width: 100%;
+}
+
+/* Code and preformatted text */
+.email-content pre {
+  background-color: rgba(55, 65, 81, 0.5);
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+  color: white;
+  font-family: 'Courier New', Courier, monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.email-content code {
+  background-color: rgba(55, 65, 81, 0.5);
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  color: white;
+}
+
+/* Blockquotes */
+.email-content blockquote {
+  border-left: 4px solid #60a5fa;
+  margin: 1em 0;
+  padding-left: 1em;
+  color: #d1d5db;
+  font-style: italic;
+}
+
+/* Dividers */
+.email-content hr {
+  border: none;
+  border-top: 1px solid rgba(75, 85, 99, 0.3);
+  margin: 2em 0;
+}
+
+/* Tables - moved to better section below */
+
+/* Ensure text elements inherit color by default */
+.email-content * {
+  color: inherit;
+}
+
+/* Override only pure black text that would be invisible */
+.email-content [style*="color: black"],
+.email-content [style*="color: #000000"],
+.email-content [style*="color: #000"],
+.email-content [style*="color: rgb(0, 0, 0)"],
+.email-content [style*="color:#000000"],
+.email-content [style*="color:#000"],
+.email-content [style*="color:black"] {
+  color: #e5e7eb !important;
+}
+
+/* Handle background colors that might make text invisible */
+.email-content [style*="background-color: white"],
+.email-content [style*="background-color: #fff"],
+.email-content [style*="background-color:#fff"],
+.email-content [style*="background-color:white"],
+.email-content [style*="background-color: #ffffff"],
+.email-content [style*="background-color:#ffffff"],
+.email-content [style*="background: white"],
+.email-content [style*="background: #fff"],
+.email-content [style*="background:#fff"],
+.email-content [style*="background:white"],
+.email-content [style*="background: #ffffff"],
+.email-content [style*="background:#ffffff"] {
+  background-color: rgba(55, 65, 81, 0.3) !important;
+  background: rgba(55, 65, 81, 0.3) !important;
+}
+
+/* Override common very light backgrounds only */
+.email-content [style*="background-color: #f8f"],
+.email-content [style*="background-color: #f9f"],
+.email-content [style*="background-color:#f8f"],
+.email-content [style*="background-color:#f9f"] {
+  background-color: rgba(55, 65, 81, 0.2) !important;
+}
+
+/* Specific overrides for common email patterns */
+.email-content table[bgcolor="white"],
+.email-content table[bgcolor="#ffffff"],
+.email-content table[bgcolor="#fff"],
+.email-content td[bgcolor="white"],
+.email-content td[bgcolor="#ffffff"],
+.email-content td[bgcolor="#fff"],
+.email-content th[bgcolor="white"],
+.email-content th[bgcolor="#ffffff"],
+.email-content th[bgcolor="#fff"] {
+  background-color: rgba(55, 65, 81, 0.3) !important;
+}
+
+/* Handle font tags - only override pure black */
+.email-content font[color="black"],
+.email-content font[color="#000000"],
+.email-content font[color="#000"] {
+  color: #e5e7eb !important;
+}
+
+/* Center tag support */
+.email-content center {
+  text-align: center;
+  display: block;
+  color: inherit;
+}
+
+/* Better table styling for emails */
+.email-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  color: white;
+  background-color: transparent;
+}
+
+.email-content th,
+.email-content td {
+  padding: 0.5em;
+  text-align: left;
+  color: inherit;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  vertical-align: top;
+}
+
+.email-content th {
+  background-color: rgba(55, 65, 81, 0.5);
+  font-weight: 600;
+}
+
+/* Handle nested tables (common in emails) */
+.email-content table table {
+  margin: 0;
+  border: none;
+}
+
+.email-content table table td,
+.email-content table table th {
+  border: none;
+  padding: 0.25em;
+}
+
+/* Email-specific layout fixes */
+.email-content [align="center"] {
+  text-align: center;
+}
+
+.email-content [align="left"] {
+  text-align: left;
+}
+
+.email-content [align="right"] {
+  text-align: right;
+}
+
+.email-content [valign="top"] {
+  vertical-align: top;
+}
+
+.email-content [valign="middle"] {
+  vertical-align: middle;
+}
+
+.email-content [valign="bottom"] {
+  vertical-align: bottom;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .email-content {
+    font-size: 16px;
+  }
+  
+  .email-content img {
+    max-width: 100%;
+  }
+  
+  .email-content table {
+    font-size: 14px;
+  }
+}

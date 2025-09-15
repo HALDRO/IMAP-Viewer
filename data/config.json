@@ -1,0 +1,10 @@
+{
+  "ui": {
+    "isLeftPanelHidden": false,
+    "isLogPanelCollapsed": false,
+    "isAccountPanelCollapsed": false,
+    "leftPanelWidth": 25,
+    "rightPanelWidth": 25,
+    "logPanelHeight": 25
+  }
+}
