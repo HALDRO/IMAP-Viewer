@@ -22,6 +22,5 @@
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "forge.config.ts",
-    "forge.env.d.ts"
   ]
 }

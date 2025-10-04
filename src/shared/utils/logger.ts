@@ -3,7 +3,7 @@
  * Provides a simple interface for components to send logs to the main process.
  */
 
-import type { Level } from 'pino';
+import type { Level } from 'pino'
 
 /**
  * Sends a log message to the main process for handling.
@@ -12,17 +12,17 @@ import type { Level } from 'pino';
  * @param context - Optional context object.
  */
 function log(level: 'info' | 'warn' | 'error', message: string, context?: object): void {
-  window.ipcApi.logMessage(level, message, context);
+  window.ipcApi.logMessage(level, message, context)
 }
 
 export const logger = {
   info: (message: string, context?: object): void => {
-    log('info', message, context);
+    log('info', message, context)
   },
   warn: (message: string, context?: object): void => {
-    log('warn', message, context);
+    log('warn', message, context)
   },
   error: (message: string, context?: object): void => {
-    log('error', message, context);
+    log('error', message, context)
   },
-};
+}

@@ -1,24 +1,26 @@
 /**
  * @file Simple import dialog for account files with drag-and-drop
  */
-import {
-  Upload,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react';
-import React, { useState, useCallback } from 'react';
+import { AlertCircle, CheckCircle, Upload } from 'lucide-react'
+import React, { useState, useCallback } from 'react'
 
 // ClipboardService is now accessed via IPC API
-import { Button } from '../shared/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../shared/ui/dialog';
+import { Button } from '../shared/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../shared/ui/dialog'
 
 interface ImportDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onImportComplete: (_result: { addedCount: number; skippedCount: number }) => void;
+  isOpen: boolean
+  onClose: () => void
+  onImportComplete: (_result: { addedCount: number; skippedCount: number }) => void
 }
 
-type ImportState = 'idle' | 'complete' | 'error';
+type ImportState = 'idle' | 'complete' | 'error'
 
 /**
  * Hook for import dialog logic
@@ -27,81 +29,87 @@ const useImportDialog = (
   isOpen: boolean,
   onImportComplete: (_result: { addedCount: number; skippedCount: number }) => void
 ): {
-  state: ImportState;
-  setState: (_state: ImportState) => void;
-  error: string;
-  setError: (_error: string) => void;
-  importResult: { addedCount: number; skippedCount: number } | null;
-  isDragOver: boolean;
-  setIsDragOver: (_value: boolean) => void;
-  handleImport: () => Promise<void>;
-  handleFileImport: (_file: File) => Promise<void>;
+  state: ImportState
+  setState: (_state: ImportState) => void
+  error: string
+  setError: (_error: string) => void
+  importResult: { addedCount: number; skippedCount: number } | null
+  isDragOver: boolean
+  setIsDragOver: (_value: boolean) => void
+  handleImport: () => Promise<void>
+  handleFileImport: (_file: File) => Promise<void>
 } => {
-  const [state, setState] = useState<ImportState>('idle');
-  const [error, setError] = useState<string>('');
-  const [importResult, setImportResult] = useState<{ addedCount: number; skippedCount: number } | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [state, setState] = useState<ImportState>('idle')
+  const [error, setError] = useState<string>('')
+  const [importResult, setImportResult] = useState<{
+    addedCount: number
+    skippedCount: number
+  } | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   // Reset state when dialog closes
   React.useEffect(() => {
     if (!isOpen) {
-      setState('idle');
-      setError('');
-      setImportResult(null);
-      setIsDragOver(false);
+      setState('idle')
+      setError('')
+      setImportResult(null)
+      setIsDragOver(false)
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   const handleImport = useCallback(async (): Promise<void> => {
-    setError('');
+    setError('')
 
     try {
       // Open file dialog and import from selected file
-      const result = await window.ipcApi.importFromFileInstant();
+      const result = await window.ipcApi.importFromFileInstant()
 
       if (result.error !== null && result.error !== undefined && result.error.length > 0) {
-        setError(result.error);
-        setState('error');
-        return;
+        setError(result.error)
+        setState('error')
+        return
       }
 
       setImportResult({
         addedCount: result.addedCount,
         skippedCount: result.skippedCount,
-      });
-      setState('complete');
-      onImportComplete(result);
+      })
+      setState('complete')
+      onImportComplete(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
-      setState('error');
+      setError(err instanceof Error ? err.message : 'Import failed')
+      setState('error')
     }
-  }, [onImportComplete]);
+  }, [onImportComplete])
 
-  const handleFileImport = useCallback(async (file: File): Promise<void> => {
-    setError('');
+  const handleFileImport = useCallback(
+    async (file: File): Promise<void> => {
+      setError('')
 
-    try {
-      // Read file content and use importFromFileContent
-      const content = await file.text();
-      const result = await window.ipcApi.importFromFileContent(content);
+      try {
+        // Read file content and use importFromFileContent
+        const content = await file.text()
+        const result = await window.ipcApi.importFromFileContent(content)
 
-      if (result.error !== null && result.error !== undefined && result.error.length > 0) {
-        setError(result.error);
-        setState('error');
-        return;
+        if (result.error !== null && result.error !== undefined && result.error.length > 0) {
+          setError(result.error)
+          setState('error')
+          return
+        }
+
+        setImportResult({
+          addedCount: result.addedCount,
+          skippedCount: result.skippedCount,
+        })
+        setState('complete')
+        onImportComplete(result)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Import failed')
+        setState('error')
       }
-
-      setImportResult({
-        addedCount: result.addedCount,
-        skippedCount: result.skippedCount,
-      });
-      setState('complete');
-      onImportComplete(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed');
-      setState('error');
-    }
-  }, [onImportComplete]);
+    },
+    [onImportComplete]
+  )
 
   return {
     state,
@@ -113,21 +121,19 @@ const useImportDialog = (
     setIsDragOver,
     handleImport,
     handleFileImport,
-  };
-};
+  }
+}
 
 /**
  * Idle state component for import dialog
  */
 const IdleState: React.FC<{
-  isDragOver: boolean;
-  onImport: () => void;
+  isDragOver: boolean
+  onImport: () => void
 }> = ({ isDragOver, onImport }) => (
   <div
     className={`text-center py-8 border-2 border-dashed rounded-lg transition-colors ${
-      isDragOver
-        ? 'border-blue-500 bg-blue-500/10'
-        : 'border-border hover:border-blue-500/50'
+      isDragOver ? 'border-blue-500 bg-blue-500/10' : 'border-border hover:border-blue-500/50'
     }`}
   >
     <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -135,8 +141,7 @@ const IdleState: React.FC<{
     <p className="text-muted-foreground mb-6 max-w-md mx-auto">
       {isDragOver
         ? 'Drop the file here to import accounts'
-        : 'Drag & drop a file here or click to select. Supported formats: email:password, email;password, email|password'
-      }
+        : 'Drag & drop a file here or click to select. Supported formats: email:password, email;password, email|password'}
     </p>
     {!isDragOver && (
       <Button onClick={onImport} className="gap-2">
@@ -145,14 +150,14 @@ const IdleState: React.FC<{
       </Button>
     )}
   </div>
-);
+)
 
 /**
  * Complete state component for import dialog
  */
 const CompleteState: React.FC<{
-  importResult: { addedCount: number; skippedCount: number } | null;
-  onClose: () => void;
+  importResult: { addedCount: number; skippedCount: number } | null
+  onClose: () => void
 }> = ({ importResult, onClose }) => (
   <div className="text-center py-8">
     <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
@@ -165,14 +170,14 @@ const CompleteState: React.FC<{
     )}
     <Button onClick={onClose}>Close</Button>
   </div>
-);
+)
 
 /**
  * Error state component for import dialog
  */
 const ErrorState: React.FC<{
-  error: string;
-  onClose: () => void;
+  error: string
+  onClose: () => void
 }> = ({ error, onClose }) => (
   <div className="text-center py-8">
     <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
@@ -180,7 +185,7 @@ const ErrorState: React.FC<{
     <p className="text-muted-foreground mb-6">{error}</p>
     <Button onClick={onClose}>Close</Button>
   </div>
-);
+)
 
 export const ImportDialog: React.FC<ImportDialogProps> = ({
   isOpen,
@@ -197,57 +202,54 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
     setIsDragOver,
     handleImport,
     handleFileImport,
-  } = useImportDialog(isOpen, onImportComplete);
-
-
+  } = useImportDialog(isOpen, onImportComplete)
 
   // Drag and drop handlers
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  }, [setIsDragOver]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(true)
+    },
+    [setIsDragOver]
+  )
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  }, [setIsDragOver]);
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
+    },
+    [setIsDragOver]
+  )
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
 
-    const files = Array.from(e.dataTransfer.files);
-    const textFile = files.find(file =>
-      file.type === 'text/plain' ||
-      file.name.endsWith('.txt') ||
-      file.name.endsWith('.csv')
-    );
+      const files = Array.from(e.dataTransfer.files)
+      const textFile = files.find(
+        file =>
+          file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.csv')
+      )
 
-    if (textFile) {
-      void handleFileImport(textFile);
-    } else {
-      setError('Please drop a text file (.txt or .csv)');
-      setState('error');
-    }
-  }, [handleFileImport, setIsDragOver, setError, setState]);
-
-
+      if (textFile) {
+        void handleFileImport(textFile)
+      } else {
+        setError('Please drop a text file (.txt or .csv)')
+        setState('error')
+      }
+    },
+    [handleFileImport, setIsDragOver, setError, setState]
+  )
 
   const renderIdleState = (): React.JSX.Element => (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <IdleState
-        isDragOver={isDragOver}
-        onImport={() => void handleImport()}
-      />
+    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+      <IdleState isDragOver={isDragOver} onImport={() => void handleImport()} />
     </div>
-  );
+  )
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -255,26 +257,17 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Account Import</DialogTitle>
           <DialogDescription>
-            Import email accounts from text files with various formats (email:password, email;password, email|password).
+            Import email accounts from text files with various formats (email:password,
+            email;password, email|password).
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-[300px]">
+        <div className="min-h-80">
           {state === 'idle' && renderIdleState()}
-          {state === 'complete' && (
-            <CompleteState
-              importResult={importResult}
-              onClose={onClose}
-            />
-          )}
-          {state === 'error' && (
-            <ErrorState
-              error={error}
-              onClose={onClose}
-            />
-          )}
+          {state === 'complete' && <CompleteState importResult={importResult} onClose={onClose} />}
+          {state === 'error' && <ErrorState error={error} onClose={onClose} />}
         </div>
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}

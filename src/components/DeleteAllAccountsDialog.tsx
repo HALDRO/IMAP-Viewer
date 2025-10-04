@@ -1,10 +1,10 @@
 /**
  * @file Confirmation dialog for deleting all accounts
  */
-import { AlertTriangle } from 'lucide-react';
-import React from 'react';
+import { AlertTriangle } from 'lucide-react'
+import type React from 'react'
 
-import { Button } from '../shared/ui/button';
+import { Button } from '../shared/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -12,13 +12,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../shared/ui/dialog';
+} from '../shared/ui/dialog'
 
 interface DeleteAllAccountsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  accountCount: number;
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: () => void
+  accountCount: number
 }
 
 /**
@@ -31,13 +31,13 @@ export const DeleteAllAccountsDialog: React.FC<DeleteAllAccountsDialogProps> = (
   accountCount,
 }) => {
   const handleConfirm = (): void => {
-    onConfirm();
-    onClose();
-  };
+    onConfirm()
+    onClose()
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
@@ -46,13 +46,15 @@ export const DeleteAllAccountsDialog: React.FC<DeleteAllAccountsDialogProps> = (
             <div>
               <DialogTitle>Delete All Accounts</DialogTitle>
               <DialogDescription className="mt-1">
-                This action cannot be undone. All account configurations will be permanently removed.
+                This action cannot be undone. All account configurations will be permanently
+                removed.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <DialogDescription className="sr-only">
-          Confirmation dialog for permanently deleting all {accountCount} email accounts and their configurations.
+          Confirmation dialog for permanently deleting all {accountCount} email accounts and their
+          configurations.
         </DialogDescription>
 
         <div className="py-4">
@@ -81,5 +83,5 @@ export const DeleteAllAccountsDialog: React.FC<DeleteAllAccountsDialogProps> = (
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}

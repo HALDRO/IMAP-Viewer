@@ -1,23 +1,23 @@
 /**
  * @file Undo notification component for deleted accounts
  */
-import { AlertCircle, Undo2, X } from 'lucide-react';
-import React from 'react';
+import { AlertCircle, Undo2, X } from 'lucide-react'
+import type React from 'react'
 
-import { Button } from '../../shared/ui/button';
+import { Button } from '../../shared/ui/button'
 
 interface DeletedAccountEntry {
   account: {
-    id: string;
-    displayName?: string;
-    email: string;
-  };
+    id: string
+    displayName?: string
+    email: string
+  }
 }
 
 interface UndoNotificationProps {
-  deletedAccounts: DeletedAccountEntry[];
-  onUndo: (accountId: string) => Promise<void>;
-  onDismiss: (accountId: string) => void;
+  deletedAccounts: DeletedAccountEntry[]
+  onUndo: (accountId: string) => Promise<void>
+  onDismiss: (accountId: string) => void
 }
 
 export const UndoNotification: React.FC<UndoNotificationProps> = ({
@@ -25,15 +25,15 @@ export const UndoNotification: React.FC<UndoNotificationProps> = ({
   onUndo,
   onDismiss,
 }) => {
-  if (deletedAccounts.length === 0) return null;
+  if (deletedAccounts.length === 0) return null
 
-  const lastDeleted = deletedAccounts[deletedAccounts.length - 1];
-  const count = deletedAccounts.length;
+  const lastDeleted = deletedAccounts[deletedAccounts.length - 1]
+  const count = deletedAccounts.length
 
   return (
     <div className="p-2">
       <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-center gap-3">
-        <AlertCircle size={16} className="text-destructive flex-shrink-0" />
+        <AlertCircle size={16} className="text-destructive shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-destructive truncate">
             {count === 1 ? 'Account deleted' : `${count} accounts deleted`}
@@ -56,7 +56,9 @@ export const UndoNotification: React.FC<UndoNotificationProps> = ({
           <Button
             onClick={() => {
               // Dismiss all notifications
-              deletedAccounts.forEach(entry => onDismiss(entry.account.id));
+              for (const entry of deletedAccounts) {
+                onDismiss(entry.account.id)
+              }
             }}
             variant="ghost"
             size="sm"
@@ -67,5 +69,5 @@ export const UndoNotification: React.FC<UndoNotificationProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

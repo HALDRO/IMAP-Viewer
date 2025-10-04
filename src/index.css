@@ -1,99 +1,153 @@
+/**
+ * @file IMAPViewer Design System
+ * @description Tailwind v4 configuration with purple theme, complete design token system,
+ * and shadcn/ui integration. All design tokens centralized in @theme for consistency.
+ * Uses 4px base unit spacing system following industry best practices.
+ */
+
 @import "tailwindcss";
 
-:root {
-  /* ShadCN UI Design System Colors - Dark Purple Theme */
-  --background: 260 6% 8%;
-  --foreground: 0 0% 98%;
-  --card: 260 6% 10%;
-  --card-foreground: 0 0% 98%;
-  --popover: 260 6% 10%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 263 70% 50%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 260 6% 16%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 260 6% 16%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 263 70% 50%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 50%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 260 6% 20%;
-  --input: 260 6% 16%;
-  --ring: 263 70% 50%;
-  --chart-1: 263 70% 50%;
-  --chart-2: 280 65% 60%;
-  --chart-3: 240 65% 60%;
-  --chart-4: 300 65% 60%;
-  --chart-5: 320 65% 60%;
-
-  /* Custom theme extensions */
-  --radius: 0.75rem;
-
-  /* Purple theme colors */
-  --purple-primary: 263 70% 50%;
-  --purple-secondary: 280 65% 60%;
-  --purple-accent: 240 65% 60%;
-  --success: 142 76% 36%;
-  --warning: 38 92% 50%;
-  --info: 199 89% 48%;
-}
-
-/* Add the ShadCN CSS variables to our theme layer */
+/* Unified Design System - Dark theme (default) */
 @theme {
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  /* ========================================
+     COLOR SYSTEM (RGB format)
+     ======================================== */
+  --color-background: rgb(19 19 22);
+  --color-foreground: rgb(250 250 250);
+  --color-card: rgb(20 20 24);
+  --color-card-foreground: rgb(250 250 250);
+  --color-popover: rgb(20 20 24);
+  --color-popover-foreground: rgb(250 250 250);
+  --color-primary: rgb(127 38 217);
+  --color-primary-foreground: rgb(250 250 250);
+  --color-secondary: rgb(39 39 44);
+  --color-secondary-foreground: rgb(250 250 250);
+  --color-muted: rgb(39 39 44);
+  --color-muted-foreground: rgb(163 163 163);
+  --color-accent: rgb(115 35 220);
+  --color-accent-foreground: rgb(250 250 250);
+  --color-destructive: rgb(207 48 48);
+  --color-destructive-foreground: rgb(250 250 250);
+  --color-border: rgb(49 49 54);
+  --color-input: rgb(39 39 44);
+  --color-ring: rgb(127 38 217);
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
+  /* ========================================
+     TYPOGRAPHY SYSTEM
+     ======================================== */
+  /* Font Families */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "SF Mono", "Consolas", "Monaco", "Courier New", monospace;
+  
+  /* Font Sizes with semantic naming */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;     /* 18px */
+  --font-size-xl: 1.25rem;      /* 20px */
+  --font-size-2xl: 1.5rem;      /* 24px */
+  --font-size-3xl: 1.875rem;    /* 30px */
+  --font-size-4xl: 2.25rem;     /* 36px */
+  
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  /* ========================================
+     SPACING SYSTEM (4px base unit)
+     ======================================== */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;    /* 4px */
+  --spacing-2: 0.5rem;     /* 8px */
+  --spacing-3: 0.75rem;    /* 12px */
+  --spacing-4: 1rem;       /* 16px */
+  --spacing-5: 1.25rem;    /* 20px */
+  --spacing-6: 1.5rem;     /* 24px */
+  --spacing-8: 2rem;       /* 32px */
+  --spacing-10: 2.5rem;    /* 40px */
+  --spacing-12: 3rem;      /* 48px */
+  --spacing-16: 4rem;      /* 64px */
+  --spacing-20: 5rem;      /* 80px */
+  --spacing-24: 6rem;      /* 96px */
+  
+  /* Semantic Spacing */
+  --spacing-section: var(--spacing-24);
+  --spacing-card: var(--spacing-6);
+  --spacing-component: var(--spacing-4);
+  
+  /* Component Heights */
+  --height-component-sm: 2.25rem;    /* 36px - small components */
+  --height-component-md: 2.5rem;     /* 40px - medium components */
+  --height-component-lg: 2.75rem;    /* 44px - large components */
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  /* ========================================
+     BORDER RADIUS SYSTEM
+     ======================================== */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;    /* 4px */
+  --radius-base: 0.5rem;   /* 8px */
+  --radius-md: 0.75rem;    /* 12px */
+  --radius-lg: 1rem;       /* 16px */
+  --radius-xl: 1.5rem;     /* 24px */
+  --radius-2xl: 2rem;      /* 32px */
+  --radius-full: 9999px;
+  
+  /* Default radius for components */
+  --radius: var(--radius-md);
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+  /* ========================================
+     TRANSITIONS & ANIMATIONS
+     ======================================== */
+  --transition-fast: 150ms;
+  --transition-base: 200ms;
+  --transition-slow: 300ms;
+  
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  /* ========================================
+     Z-INDEX SYSTEM (Layering Architecture)
+     ======================================== */
+  --z-base: 0;           /* Base content layer */
+  --z-content: 10;       /* Email list/viewer content */
+  --z-browser: 20;       /* WebContentsView browser overlay */
+  --z-settings: 30;      /* Settings panel above browser */
+  --z-overlay: 40;       /* Modal/Dialog backdrop */
+  --z-modal: 50;         /* Modal/Dialog/Tooltip content */
 }
 
 /* Light theme overrides */
 .light {
-  --background: 0 0% 100%;
-  --foreground: 260 6% 8%;
-  --card: 0 0% 100%;
-  --card-foreground: 260 6% 8%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 260 6% 8%;
-  --primary: 263 70% 50%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 260 6% 96%;
-  --secondary-foreground: 260 6% 8%;
-  --muted: 260 6% 96%;
-  --muted-foreground: 260 6% 45%;
-  --accent: 263 70% 50%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 260 6% 89%;
-  --input: 260 6% 89%;
-  --ring: 263 70% 50%;
+  --color-background: rgb(255 255 255);
+  --color-foreground: rgb(20 19 22);
+  --color-card: rgb(255 255 255);
+  --color-card-foreground: rgb(20 19 22);
+  --color-popover: rgb(255 255 255);
+  --color-popover-foreground: rgb(20 19 22);
+  --color-primary: rgb(127 38 217);
+  --color-primary-foreground: rgb(250 250 250);
+  --color-secondary: rgb(242 242 247);
+  --color-secondary-foreground: rgb(20 19 22);
+  --color-muted: rgb(242 242 247);
+  --color-muted-foreground: rgb(112 112 122);
+  --color-accent: rgb(213 208 235);
+  --color-accent-foreground: rgb(20 19 22);
+  --color-destructive: rgb(239 68 68);
+  --color-destructive-foreground: rgb(250 250 250);
+  --color-border: rgb(227 227 230);
+  --color-input: rgb(227 227 230);
+  --color-ring: rgb(127 38 217);
 }
 
 @layer base {
@@ -103,93 +157,41 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+  }
+
+  /* Sidebar semantic colors */
+  :root {
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
-@layer components {
-  /* Utility classes for common layouts */
-  .flex-center {
-    @apply flex items-center justify-center;
-  }
 
-  .flex-between {
-    @apply flex items-center justify-between;
-  }
-
-  .stack {
-    @apply flex flex-col;
-  }
-
-
+code, pre {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
 }
 
-:root {
-  /* Application-specific variables */
-  --app-accent-blue: #3ea6ff;
-  --app-accent-red: #ff4e45;
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-/* Animation classes - optimized for performance */
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-  will-change: opacity;
-}
-
-.slide-in {
-  animation: slideIn 0.3s ease-out;
-  will-change: transform, opacity;
-}
-
-.pulse {
-  animation: pulse 2s infinite;
-  will-change: opacity;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translate3d(0, 10px, 0);
-    opacity: 0;
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-  }
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
-}
 
 /* Base styles */
 html, body, #root {
@@ -198,40 +200,6 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* Unified modern scrollbar - thin variant for all components */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-  margin: 1px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:active {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.custom-scrollbar::-webkit-scrollbar-corner {
-  background: transparent;
-}
 
 /* Hide horizontal scrollbar in some components */
 .hide-scrollbar::-webkit-scrollbar {
@@ -243,41 +211,38 @@ html, body, #root {
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Placeholder shimmer effect */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.animate-shimmer {
-  animation: shimmer 2s infinite linear;
-  background: linear-gradient(to right, rgba(255,255,255,0.03) 8%, rgba(255,255,255,0.08) 18%, rgba(255,255,255,0.03) 33%);
-  background-size: 1000px 100%;
-  will-change: background-position;
-}
 
 /* Enhanced focus styles for better accessibility */
-*:focus-visible {
-  outline: 2px solid #60a5fa;
-  outline-offset: 2px;
-  border-radius: 4px;
+*:focus-visible:not(input):not([data-slot="input"]) {
+  outline: 2px solid rgb(var(--color-ring));
+  outline-offset: var(--spacing-1);
+  border-radius: var(--radius-sm);
 }
 
-/* High contrast focus for interactive elements */
+/* High contrast focus for interactive elements, excluding inputs */
 button:focus-visible,
-input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible,
 [role="tab"]:focus-visible,
 [role="menuitem"]:focus-visible {
-  outline: 2px solid #60a5fa;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2);
+  outline: 2px solid rgb(var(--color-ring));
+  outline-offset: var(--spacing-1);
+  box-shadow: 0 0 0 var(--spacing-1) rgb(var(--color-ring) / 0.2);
+}
+
+/* Remove focus outline for input elements completely - they use custom border styles */
+input:focus-visible,
+input[data-slot="input"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Force placeholder colors to be muted */
+input::placeholder,
+input[data-slot="input"]::placeholder {
+  color: rgb(var(--muted-foreground)) !important;
+  opacity: 0.6 !important;
 }
 
 /* Remove focus outline for mouse users but keep for keyboard */
@@ -285,22 +250,6 @@ textarea:focus-visible,
   outline: none;
 }
 
-/* Skip to main content link for screen readers */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 6px;
-  background: #000;
-  color: #fff;
-  padding: 8px;
-  text-decoration: none;
-  border-radius: 4px;
-  z-index: 1000;
-}
-
-.skip-link:focus {
-  top: 6px;
-}
 
 /* Screen reader only content */
 .sr-only {
@@ -322,6 +271,19 @@ textarea:focus-visible,
     --color-foreground: 0 0% 100%;
     --color-border: 0 0% 30%;
   }
+}
+
+/* Component height utilities */
+.h-component-sm {
+  height: var(--height-component-sm);
+}
+
+.h-component-md {
+  height: var(--height-component-md);
+}
+
+.h-component-lg {
+  height: var(--height-component-lg);
 }
 
 /* Reduced motion support */

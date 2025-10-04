@@ -1,398 +1,691 @@
 /**
- * @file Hook for managing proxy operations and state
+ * @file Unified proxy management hook with advanced validation and duplicate handling
+ * @description Centralized proxy state and operations management with minimal duplication. Strict Zod validation with IP/domain checking, intelligent duplicate prevention, react-hook-form integration. Features: proxy testing, import/export, manual source fetching, localStorage persistence. Module-level utilities prevent object recreation and performance issues. Auto-update functionality has been removed - proxies are now fetched only on explicit user action via the "Get" button.
  */
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useCallback, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { shallow } from 'zustand/shallow'
 
-import { useProxyListStore } from '../store/proxyListStore';
-import { useProxyStore } from '../store/proxyStore';
-import type { GlobalProxyConfig } from '../types/account';
-import { logger as appLogger } from '../utils/logger';
+import {
+  exportProxiesToString,
+  normalizeProxy,
+  parseProxyImport,
+} from '../../services/proxyOrchestrator'
+import { getProxyKey, useProxyListStore } from '../store/proxyListStore'
+import { useProxyStore } from '../store/proxyStore'
+import type {
+  GlobalProxyConfig,
+  ProxyConfig,
+  ProxyItem,
+  ProxyTestResult,
+  TestConfig,
+} from '../types/account'
+import { showToast } from '../ui/Toast'
+import { logger as appLogger } from '../utils/logger'
+import { extractProxyContent, parseProxyLine } from '../utils/proxyParser'
+import { useProxyForm } from './useProxyForm'
+import { useProxyStatus } from './useProxyStatus'
 
-// Proxy form validation schema
-const proxyFormSchema = z.object({
-  host: z.string().min(1, 'Host is required'),
-  port: z.number().min(1, 'Port must be greater than 0').max(65535, 'Port must be less than 65536'),
-  username: z.string().optional(),
-  password: z.string().optional(),
-  type: z.enum(['http', 'https', 'socks4', 'socks5']).optional(),
-});
-
-export type ProxyFormData = z.infer<typeof proxyFormSchema>;
+interface TestProgress {
+  total: number
+  tested: number
+  valid: number
+  invalid: number
+  startTime: number
+}
 
 interface UseProxyManagerReturn {
-  // Form state
-  form: ReturnType<typeof useForm<ProxyFormData>>;
-  isEditing: boolean;
-  editingIndex: number | null;
-
   // UI state
-  isPasswordVisible: boolean;
-  setIsPasswordVisible: (_visible: boolean) => void;
+  isPasswordVisible: boolean
+  setIsPasswordVisible: (_visible: boolean) => void
 
   // Actions
-  handleAddProxy: (_data: ProxyFormData & { type?: 'http' | 'https' | 'socks4' | 'socks5' }) => void;
-  handleEditProxy: (_index: number) => void;
-  handleUpdateProxy: (_data: ProxyFormData) => void;
-  handleDeleteProxy: (_index: number) => void;
-  handleCancelEdit: () => void;
-  handleTestProxy: (_index: number) => Promise<void>;
-  handleTestAllProxies: () => Promise<void>;
-  handleImportProxies: (_text: string) => Promise<void>;
-  handleExportProxies: () => string;
+  handleSetProxy: (index: number | null) => Promise<void>
+  handleTestProxy: (index: number, sessionId?: string) => Promise<void>
+  handleTestAllProxies: () => Promise<void>
+  handleStopTestAll: () => void
+  handleDeleteInvalidProxies: () => Promise<void>
+  deleteProxy: (index: number) => void
+  handleImportProxies: (_text: string) => Promise<void>
+  handleExportProxies: () => string
+  handleFetchFromExternalSource: () => Promise<void>
 
   // Proxy settings
-  enableProxies: boolean;
-  setEnableProxies: (_enabled: boolean) => Promise<void>;
+  enableProxies: boolean
 
   // Source randomization
-  randomizeSource: boolean;
-  setRandomizeSource: (_enabled: boolean) => void;
-  sourceUrl: string;
-  setSourceUrl: (_url: string) => void;
-
-  // Auto update
-  autoUpdateEnabled: boolean;
-  setAutoUpdateEnabled: (_enabled: boolean) => void;
-  updateInterval: number;
-  setUpdateInterval: (_interval: number) => void;
+  randomizeSource: boolean
+  setRandomizeSource: (_enabled: boolean) => void
+  proxySources: string[]
+  setProxySources: (_sources: string[]) => void
 
   // Retry settings
-  maxRetries: number;
-  setMaxRetries: (retries: number) => void;
+  maxRetries: number
+  setMaxRetries: (retries: number) => void
 
-  // Random proxy selection
-  useRandomProxy: boolean;
-  setUseRandomProxy: (enabled: boolean) => void;
+  // Test configuration
+  testTimeout: number
+  setTestTimeout: (timeout: number) => void
+  testUrl: string
+  setTestUrl: (url: string) => void
+  delayBetweenRetries: number
+  setDelayBetweenRetries: (delay: number) => void
+
+  // Default proxy type (for proxies without explicit type)
+  defaultProxyType: 'http' | 'https' | 'socks4' | 'socks5'
+  setDefaultProxyType: (type: 'http' | 'https' | 'socks4' | 'socks5') => void
+
+  // Selected proxy (null = rotation, number = specific proxy)
+  selectedProxyIndex: number | null
+  setSelectedProxyIndex: (index: number | null) => void
 
   // Loading states
-  isLoading: boolean;
-  isTesting: Record<number, boolean>;
+  isLoading: boolean
+  isTesting: Record<number, boolean>
+  isTestingAll: boolean
+
+  // Test progress statistics
+  testProgress: TestProgress | null
 
   // State from store
-  proxies: Array<{ host: string; port: number; username?: string; password?: string; type?: 'http' | 'https' | 'socks4' | 'socks5' }>;
-  currentProxyIndex: number;
-  testResults: Record<number, { success: boolean; error?: string; timestamp: number }>;
+  proxies: Array<{
+    host: string
+    port: number
+    username?: string
+    password?: string
+    type?: 'http' | 'https' | 'socks4' | 'socks5'
+  }>
+  testResults: Record<string, ProxyTestResult>
+
+  // Clear all proxies
+  clearAllProxies: () => void
 }
 
 /**
  * Hook for managing proxy functionality
  */
-/* eslint-disable @typescript-eslint/strict-boolean-expressions, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/require-await */
 export const useProxyManager = (): UseProxyManagerReturn => {
+  // No longer a hook, just the object
+  const toast = showToast
   const {
     proxies,
-    currentProxyIndex,
+    selectedProxyIndex,
     testResults,
-    addProxy,
-    updateProxy,
     deleteProxy,
-    testProxy,
     loadProxies,
-    removeDuplicates,
+    setSelectedProxyIndex: setSelectedProxyIndexInternal,
     isLoading: storeLoading,
-  } = useProxyListStore();
+    addProxies,
+    clearAllProxies,
+    setTestResult,
+    setTestStatus,
+  } = useProxyListStore()
 
-  const { config, setConfig } = useProxyStore();
+  const {
+    config,
+    setConfig,
+    randomizeSource,
+    setRandomizeSource,
+    proxySources,
+    setProxySources,
+    maxRetries,
+    setMaxRetries,
+    testTimeout,
+    setTestTimeout,
+    testUrl,
+    setTestUrl,
+    delayBetweenRetries,
+    setDelayBetweenRetries,
+    defaultProxyType,
+    setDefaultProxyType,
+  } = useProxyStore()
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isTesting, setIsTesting] = useState<Record<number, boolean>>({});
-
-  // Derive enableProxies from global proxy store
-  const enableProxies = config?.enabled ?? false;
-
-  // Source randomization
-  const [randomizeSource, setRandomizeSource] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState('');
-
-  // Auto update
-  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
-  const [updateInterval, setUpdateInterval] = useState(30);
-
-  // Retry settings
-  const [maxRetries, setMaxRetries] = useState(3);
-
-  // Random proxy selection
-  const [useRandomProxy, setUseRandomProxy] = useState(false);
-
-  const form = useForm<ProxyFormData>({
-    resolver: zodResolver(proxyFormSchema),
-    defaultValues: {
-      host: '127.0.0.1',
-      port: 10808,
-      username: '',
-      password: '',
-    },
-  });
-
-  const { reset } = form;
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isTesting, setIsTesting] = useState<Record<number, boolean>>({})
+  const [isTestingAll, setIsTestingAll] = useState(false)
+  const [testProgress, setTestProgress] = useState<TestProgress | null>(null)
+  const testSessionId = useRef<string | null>(null)
 
   // Load proxies on mount
   useEffect(() => {
-    void loadProxies();
-  }, [loadProxies]);
+    void loadProxies()
+  }, [loadProxies])
 
-  // Function to enable/disable proxies globally
-  const setEnableProxies = useCallback(async (enabled: boolean) => {
-    try {
-      // Check if IPC API is available
-      if (window.ipcApi?.proxy?.setGlobal === null || window.ipcApi?.proxy?.setGlobal === undefined) {
-        appLogger.error('IPC API not available');
-        return;
-      }
-
-      if (enabled) {
-        if (proxies.length === 0) {
-          appLogger.error('Cannot enable proxy: No proxies configured');
-          return;
-        }
-
-        // Enable proxy with the first available proxy
-        const firstProxy = proxies[0];
-        appLogger.info(`Attempting to enable proxy: ${firstProxy.host}:${firstProxy.port}`);
-
-        const proxyConfig: GlobalProxyConfig = {
-          enabled: true,
-          type: (firstProxy.type ?? 'socks5'),
-          hostPort: `${firstProxy.host}:${firstProxy.port}`,
-          auth: !!(firstProxy.username !== null && firstProxy.username !== undefined && firstProxy.username.length > 0 &&
-                   firstProxy.password !== null && firstProxy.password !== undefined && firstProxy.password.length > 0),
-          username: firstProxy.username,
-          password: firstProxy.password,
-        };
-
-        // Update local state immediately to prevent UI flicker
-        setConfig(proxyConfig);
-        window.ipcApi.proxy.setGlobal(proxyConfig);
-        appLogger.info(`Proxy enabled successfully: ${firstProxy.host}:${firstProxy.port}`);
-      } else {
-        // Disable proxy
-        appLogger.info('Disabling proxy...');
-        // Update local state immediately
-        setConfig(null);
-        window.ipcApi.proxy.setGlobal(null);
-        appLogger.info('Proxy disabled successfully');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      appLogger.error(`Proxy operation failed: ${errorMessage}`);
-      // eslint-disable-next-line no-console
-      console.error('Proxy operation error:', error);
-      // Don't re-throw the error to prevent component crashes
-    }
-  }, [proxies, setConfig]);
-
-  const handleAddProxy = useCallback((data: ProxyFormData & { type?: 'http' | 'https' | 'socks4' | 'socks5' }) => {
-    // Check for duplicates before adding
-    const isDuplicate = proxies.some(proxy =>
-      proxy.host.toLowerCase().trim() === data.host.toLowerCase().trim() &&
-      proxy.port === data.port &&
-      (proxy.username ?? '').toLowerCase().trim() === (data.username ?? '').toLowerCase().trim()
-    );
-
-    if (isDuplicate) {
-      appLogger.error(`Proxy ${data.host}:${data.port} already exists`);
-      return;
-    }
-
-    // Add the proxy
-    addProxy(data);
-    appLogger.info(`Proxy ${data.host}:${data.port} added`);
-
-    // Immediately remove duplicates synchronously
-    const removedCount = removeDuplicates();
-    if (removedCount > 0) {
-      appLogger.info(`Removed ${removedCount} duplicate proxy(ies)`);
-    }
-
-    // Reset form
-    reset({
-      host: '127.0.0.1',
-      port: 10808,
-      username: '',
-      password: '',
-    });
-  }, [addProxy, reset, proxies, removeDuplicates]);
-
-  const handleEditProxy = useCallback((index: number) => {
-    const proxy = proxies[index];
-    if (proxy) {
-      setIsEditing(true);
-      setEditingIndex(index);
-      reset({
-        host: proxy.host,
-        port: proxy.port,
-        username: proxy.username || '',
-        password: proxy.password || '',
-      });
-    }
-  }, [proxies, reset]);
-
-  const handleUpdateProxy = useCallback((data: ProxyFormData) => {
-    if (editingIndex !== null) {
-      updateProxy(editingIndex, data);
-      appLogger.info(`Proxy ${data.host}:${data.port} updated`);
-      setIsEditing(false);
-      setEditingIndex(null);
-      reset();
-    }
-  }, [editingIndex, updateProxy, reset]);
-
-  const handleDeleteProxy = useCallback((index: number) => {
-    const proxy = proxies[index];
-    if (proxy) {
-      deleteProxy(index);
-      appLogger.info(`Proxy ${proxy.host}:${proxy.port} deleted`);
-      
-      // If we were editing this proxy, cancel the edit
-      if (editingIndex === index) {
-        setIsEditing(false);
-        setEditingIndex(null);
-        reset();
-      }
-    }
-  }, [proxies, deleteProxy, editingIndex, reset]);
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false);
-    setEditingIndex(null);
-    reset();
-  }, [reset]);
-
-  const handleTestProxy = useCallback(async (index: number) => {
-    const proxy = proxies[index];
-    if (proxy) {
-      setIsTesting(prev => ({ ...prev, [index]: true }));
-      appLogger.info(`Testing proxy ${proxy.host}:${proxy.port}...`);
+  // Sync proxy config from backend to frontend store on mount
+  useEffect(() => {
+    const syncFromBackend = async () => {
       try {
-        await testProxy(index);
-        const result = testResults[index];
-        if (result?.success) {
-          appLogger.info(`Proxy ${proxy.host}:${proxy.port} test successful`);
+        const globalProxy = await window.ipcApi.proxy.getGlobal()
+        if (globalProxy) {
+          setConfig(globalProxy)
+          appLogger.info('Synced proxy config from backend to store')
         } else {
-          appLogger.error(`Proxy ${proxy.host}:${proxy.port} test failed: ${result?.error || 'Unknown error'}`);
+          setConfig(null)
         }
       } catch (error) {
-        appLogger.error(`Proxy ${proxy.host}:${proxy.port} test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setIsTesting(prev => ({ ...prev, [index]: false }));
+        appLogger.error(
+          `Failed to sync proxy config: ${error instanceof Error ? error.message : 'Unknown'}`
+        )
       }
     }
-  }, [proxies, testProxy, testResults]);
+    void syncFromBackend()
+  }, [setConfig])
 
-  const handleTestAllProxies = useCallback(async () => {
-    if (proxies.length === 0) {
-      appLogger.info('No proxies to test');
-      return;
-    }
+  // Wrapper to sync selectedProxyIndex to backend config for IMAP connections
+  // When user selects a proxy, automatically enable global proxy if it's not already enabled
+  const setSelectedProxyIndex = useCallback(
+    async (index: number | null) => {
+      setSelectedProxyIndexInternal(index)
 
-    appLogger.info(`Testing ${proxies.length} proxies...`);
-    
-    const testPromises = proxies.map((_, index) => handleTestProxy(index));
-    await Promise.allSettled(testPromises);
-    
-    appLogger.info('Finished testing all proxies');
-  }, [proxies, handleTestProxy]);
+      // Sync to backend config so configureProxy() can use it
+      try {
+        const globalProxy = await window.ipcApi.proxy.getGlobal()
 
-  const handleImportProxies = useCallback(async (text: string) => {
-    try {
-      const lines = text.split('\n').filter(line => line.trim());
-      let imported = 0;
+        // If user selects a proxy (index is not null) and global proxy exists but is disabled
+        // automatically enable it to avoid confusion
+        if (index !== null && globalProxy && !globalProxy.enabled) {
+          const targetProxy = proxies[index]
+          if (targetProxy) {
+            appLogger.info(
+              `Auto-enabling proxy when selecting specific proxy #${index + 1}: ${targetProxy.host}:${targetProxy.port}`
+            )
+            const updatedConfig = {
+              enabled: true,
+              type: targetProxy.type ?? 'socks5',
+              hostPort: `${targetProxy.host}:${targetProxy.port}`,
+              auth: !!(targetProxy.username && targetProxy.password),
+              username: targetProxy.username,
+              password: targetProxy.password,
+              selectedProxyIndex: index,
+            }
+            setConfig(updatedConfig)
+            await window.ipcApi.proxy.setGlobal(updatedConfig)
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        // Support formats: host:port, host:port:username:password, type://host:port
-        let host: string;
-        let port: number;
-        let username: string | undefined;
-        let password: string | undefined;
-
-
-        if (trimmed.includes('://')) {
-          // Format: type://host:port or type://username:password@host:port
-          const [, rest] = trimmed.split('://');
-
-          if (rest.includes('@')) {
-            const [auth, hostPort] = rest.split('@');
-            [username, password] = auth.split(':');
-            [host, port] = hostPort.split(':').map((v, i) => i === 1 ? parseInt(v) : v) as [string, number];
-          } else {
-            [host, port] = rest.split(':').map((v, i) => i === 1 ? parseInt(v) : v) as [string, number];
+            // Update browser proxy
+            try {
+              await window.ipcApi.browser.updateProxy()
+            } catch (browserError) {
+              appLogger.warn(
+                `Failed to update browser proxy: ${browserError instanceof Error ? browserError.message : 'Unknown'}`
+              )
+            }
+            return
           }
-        } else {
-          // Format: host:port or host:port:username:password
-          const parts = trimmed.split(':');
-          if (parts.length >= 2) {
-            host = parts[0];
-            port = parseInt(parts[1]);
-            if (parts.length >= 4) {
-              username = parts[2];
-              password = parts[3];
+        }
+
+        // Normal case: update both selectedProxyIndex AND proxy config
+        if (globalProxy) {
+          if (index !== null) {
+            // User selected a specific proxy - update full config
+            const targetProxy = proxies[index]
+            if (targetProxy) {
+              appLogger.info(
+                `Switching to proxy #${index + 1}: ${targetProxy.host}:${targetProxy.port}`
+              )
+              const updatedConfig = {
+                enabled: globalProxy.enabled,
+                type: targetProxy.type ?? 'socks5',
+                hostPort: `${targetProxy.host}:${targetProxy.port}`,
+                auth: !!(targetProxy.username && targetProxy.password),
+                username: targetProxy.username,
+                password: targetProxy.password,
+                selectedProxyIndex: index,
+              }
+              setConfig(updatedConfig)
+              await window.ipcApi.proxy.setGlobal(updatedConfig)
+
+              // Update browser proxy
+              try {
+                await window.ipcApi.browser.updateProxy()
+              } catch (browserError) {
+                appLogger.warn(
+                  `Failed to update browser proxy: ${browserError instanceof Error ? browserError.message : 'Unknown'}`
+                )
+              }
             }
           } else {
-            continue;
+            // User deselected (switching to rotation) - just update index
+            const updatedConfig = {
+              ...globalProxy,
+              selectedProxyIndex: undefined,
+            }
+            setConfig(updatedConfig)
+            await window.ipcApi.proxy.setGlobal(updatedConfig)
+
+            // Update browser proxy
+            try {
+              await window.ipcApi.browser.updateProxy()
+            } catch (browserError) {
+              appLogger.warn(
+                `Failed to update browser proxy: ${browserError instanceof Error ? browserError.message : 'Unknown'}`
+              )
+            }
+          }
+        } else if (index !== null) {
+          // If no global proxy exists yet and user selects a proxy, create one
+          const targetProxy = proxies[index]
+          if (targetProxy) {
+            appLogger.info(
+              `Creating global proxy config when selecting proxy #${index + 1}: ${targetProxy.host}:${targetProxy.port}`
+            )
+            const newConfig = {
+              enabled: true,
+              type: targetProxy.type ?? 'socks5',
+              hostPort: `${targetProxy.host}:${targetProxy.port}`,
+              auth: !!(targetProxy.username && targetProxy.password),
+              username: targetProxy.username,
+              password: targetProxy.password,
+              selectedProxyIndex: index,
+            }
+            setConfig(newConfig)
+            await window.ipcApi.proxy.setGlobal(newConfig)
+
+            // Update browser proxy
+            try {
+              await window.ipcApi.browser.updateProxy()
+            } catch (browserError) {
+              appLogger.warn(
+                `Failed to update browser proxy: ${browserError instanceof Error ? browserError.message : 'Unknown'}`
+              )
+            }
+          }
+        }
+      } catch (error) {
+        appLogger.error(
+          `Failed to sync selected proxy to config: ${error instanceof Error ? error.message : 'Unknown'}`
+        )
+      }
+    },
+    [setSelectedProxyIndexInternal, proxies, setConfig]
+  )
+
+  // Derive enableProxies from global proxy store
+  const enableProxies = config?.enabled ?? false
+
+  const handleSetProxy = useCallback(
+    async (index: number | null) => {
+      try {
+        if (index === null) {
+          // Disable proxy
+          setConfig(null)
+          await window.ipcApi.proxy.setGlobal(null)
+          setSelectedProxyIndexInternal(null)
+          appLogger.info('Global proxy disabled')
+        } else {
+          // Enable proxy with specific index
+          const targetProxy = proxies[index]
+          if (targetProxy) {
+            const proxyConfig: GlobalProxyConfig = {
+              enabled: true,
+              type: targetProxy.type ?? 'socks5',
+              hostPort: `${targetProxy.host}:${targetProxy.port}`,
+              auth: !!(targetProxy.username && targetProxy.password),
+              username: targetProxy.username,
+              password: targetProxy.password,
+            }
+            setConfig(proxyConfig)
+            await window.ipcApi.proxy.setGlobal(proxyConfig)
+            setSelectedProxyIndexInternal(index)
+            appLogger.info(`Global proxy enabled: ${targetProxy.host}:${targetProxy.port}`)
           }
         }
 
-        if (host && !isNaN(port)) {
-          addProxy({ host, port, username, password });
-          imported++;
+        // Update browser proxy configuration
+        try {
+          const browserResult = await window.ipcApi.browser.updateProxy()
+          if (browserResult.success) {
+            appLogger.info(
+              browserResult.proxyEnabled
+                ? `Browser proxy updated: ${browserResult.proxy}`
+                : 'Browser proxy disabled'
+            )
+          }
+        } catch (browserError) {
+          appLogger.warn(
+            `Failed to update browser proxy: ${browserError instanceof Error ? browserError.message : 'Unknown'}`
+          )
+        }
+      } catch (error) {
+        appLogger.error(
+          `Failed to set proxy: ${error instanceof Error ? error.message : 'Unknown'}`
+        )
+      }
+    },
+    [proxies, setConfig, setSelectedProxyIndexInternal]
+  )
+
+  const handleTestProxy = useCallback(
+    async (index: number, sessionId?: string) => {
+      const proxy = proxies[index]
+      if (!proxy) return
+
+      const proxyKey = getProxyKey(proxy)
+      setIsTesting(prev => ({ ...prev, [index]: true }))
+      setTestStatus(proxyKey, 'testing')
+      appLogger.info(`Testing proxy ${proxy.host}:${proxy.port}...`)
+
+      try {
+        // Prepare proxy config for IPC
+        const proxyConfig = {
+          host: proxy.host,
+          port: proxy.port,
+          type: proxy.type ?? defaultProxyType,
+          username: proxy.username,
+          password: proxy.password,
+          auth: !!(proxy.username && proxy.password),
+        }
+
+        // Prepare test config from Zustand store
+        const testConfig: TestConfig = {
+          testUrl,
+          timeout: testTimeout,
+          maxRetries,
+          delayBetweenRetries,
+        }
+
+        const result = await window.ipcApi.proxy.test(proxyConfig, testConfig, sessionId)
+        setTestResult(proxyKey, { ...result, timestamp: Date.now(), loading: false })
+
+        if (result.success) {
+          appLogger.info(
+            `Proxy ${proxy.host}:${proxy.port} test successful | IP: ${result.ip || 'N/A'}`
+          )
+        } else {
+          appLogger.error(
+            `Proxy ${proxy.host}:${proxy.port} test failed: ${result.error || 'Unknown reason'}`
+          )
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'An unknown error occurred during testing'
+        appLogger.error(`Proxy ${proxy.host}:${proxy.port} test exception: ${errorMessage}`)
+        setTestResult(proxyKey, {
+          success: false,
+          error: errorMessage,
+          timestamp: Date.now(),
+          loading: false,
+        })
+      } finally {
+        setIsTesting(prev => ({ ...prev, [index]: false }))
+        setTestStatus(proxyKey, 'idle')
+      }
+    },
+    [
+      proxies,
+      setTestStatus,
+      defaultProxyType,
+      testUrl,
+      testTimeout,
+      maxRetries,
+      delayBetweenRetries,
+      setTestResult,
+    ]
+  )
+
+  const handleTestAllProxies = useCallback(async () => {
+    if (isTestingAll) return
+    setIsTestingAll(true)
+
+    const proxiesSnapshot = [...proxies]
+    const total = proxiesSnapshot.length
+    if (total === 0) {
+      setIsTestingAll(false)
+      return
+    }
+
+    const sessionId = crypto.randomUUID()
+    testSessionId.current = sessionId
+    await window.ipcApi.proxy.startTestSession(sessionId)
+    appLogger.info(`Starting bulk proxy test with session ID: ${sessionId}`)
+
+    const startTime = Date.now()
+    setTestProgress({ total, tested: 0, valid: 0, invalid: 0, startTime })
+
+    // Incremental progress tracking (O(1) instead of O(n))
+    let tested = 0
+    let valid = 0
+    let invalid = 0
+
+    try {
+      const CONCURRENT_TESTS = 50
+
+      // Process proxies sequentially with micro-batches to allow UI updates and cancellation
+      for (let i = 0; i < total; i += CONCURRENT_TESTS) {
+        if (!testSessionId.current) {
+          appLogger.info('Bulk test aborted by user.')
+          break
+        }
+
+        const batch = proxiesSnapshot.slice(i, Math.min(i + CONCURRENT_TESTS, total))
+
+        // Launch all tests in the batch with immediate progress updates
+        const batchPromises = batch.map(async (proxy, batchIndex) => {
+          const originalIndex = i + batchIndex
+          const proxyKey = getProxyKey(proxy)
+
+          await handleTestProxy(originalIndex, sessionId)
+
+          // Immediately update counters after test completes
+          const currentTestResults = useProxyListStore.getState().testResults
+          const result = currentTestResults[proxyKey]
+
+          if (result && !result.loading && (result.success === true || result.success === false)) {
+            tested++
+            if (result.success === true) {
+              valid++
+            } else {
+              invalid++
+            }
+            // Update UI immediately (React batches state updates automatically)
+            setTestProgress(prev => (prev ? { ...prev, tested, valid, invalid } : null))
+          }
+        })
+
+        // Use Promise.allSettled to avoid blocking and allow cancellation
+        await Promise.allSettled(batchPromises)
+
+        // Yield to event loop to allow UI updates and stop button processing
+        await new Promise(resolve => setTimeout(resolve, 0))
+
+        // Check abort flag again after yielding
+        if (!testSessionId.current) {
+          appLogger.info('Bulk test aborted after batch completion.')
+          break
         }
       }
-
-      appLogger.info(`Imported ${imported} proxies successfully`);
     } catch (error) {
-      appLogger.error(`Failed to import proxies: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = `An unexpected error occurred during bulk proxy testing: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+      appLogger.error(errorMessage)
+      toast.error({
+        title: 'Error',
+        message: 'An unexpected error occurred during bulk proxy testing.',
+      })
+    } finally {
+      setIsTestingAll(false)
+      if (testSessionId.current) {
+        await window.ipcApi.proxy.stopTestSession(testSessionId.current)
+        appLogger.info(`Cleaning up proxy test session: ${testSessionId.current}`)
+        testSessionId.current = null
+      }
+      setTimeout(() => setTestProgress(null), 5000)
     }
-  }, [addProxy]);
+  }, [proxies, handleTestProxy, isTestingAll, toast])
+
+  const handleStopTestAll = useCallback(() => {
+    if (!isTestingAll || !testSessionId.current) return
+
+    appLogger.info(`User requested to stop all proxy tests for session: ${testSessionId.current}`)
+    window.ipcApi.proxy.stopTestSession(testSessionId.current)
+    testSessionId.current = null // Prevent further tests in the loop
+    setIsTestingAll(false)
+  }, [isTestingAll])
+
+  const handleDeleteInvalidProxies = useCallback(async () => {
+    const currentProxies = useProxyListStore.getState().proxies
+    const currentTestResults = useProxyListStore.getState().testResults
+
+    const indicesToDelete: number[] = []
+    currentProxies.forEach((proxy, index) => {
+      const proxyKey = getProxyKey(proxy)
+      const result = currentTestResults[proxyKey]
+      // Don't delete proxies that are currently being tested
+      if (isTesting[index]) {
+        return
+      }
+      // Delete if the test has been run and failed
+      if (result && !result.success && !result.loading) {
+        indicesToDelete.push(index)
+      }
+    })
+
+    if (indicesToDelete.length > 0) {
+      appLogger.info(`Deleting ${indicesToDelete.length} invalid proxies...`)
+      // Delete in reverse order to maintain correct indices
+      for (let i = indicesToDelete.length - 1; i >= 0; i--) {
+        deleteProxy(indicesToDelete[i])
+      }
+      appLogger.info('Invalid proxies deleted')
+    } else {
+      appLogger.info('No invalid proxies found to delete')
+    }
+  }, [deleteProxy, isTesting])
+
+  const handleImportProxies = useCallback(
+    async (text: string) => {
+      try {
+        const parsedProxies = parseProxyImport(text, defaultProxyType, randomizeSource)
+
+        // Bulk add - duplicates are filtered in addProxies
+        if (parsedProxies.length > 0) {
+          appLogger.info(`Importing ${parsedProxies.length} proxies...`)
+          addProxies(parsedProxies)
+          appLogger.info('Import completed')
+        } else {
+          appLogger.warn('No valid proxies found in the provided content')
+        }
+      } catch (error) {
+        appLogger.error(
+          `Failed to import proxies: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      }
+    },
+    [addProxies, defaultProxyType, randomizeSource]
+  )
+
+  // External fetch functionality - fetch any URL and extract proxies from content
+  const handleFetchFromExternalSource = useCallback(
+    async (url?: string) => {
+      // If specific URL provided, use it; otherwise fetch from all configured sources
+      const sources = url ? [url] : proxySources
+
+      if (sources.length === 0) {
+        appLogger.error('No proxy sources configured')
+        return
+      }
+
+      try {
+        if (!window.ipcApi?.fetchExternal) {
+          throw new Error('fetchExternal API is not available')
+        }
+
+        appLogger.info(`Fetching proxies from ${sources.length} source(s)`)
+
+        // Fetch and combine proxies from all sources
+        const allProxiesText: string[] = []
+
+        for (const source of sources) {
+          try {
+            appLogger.info(`Fetching from: ${source}`)
+            const text = await window.ipcApi.fetchExternal(source)
+            if (text && text.trim().length > 0) {
+              allProxiesText.push(text)
+            }
+          } catch (error) {
+            appLogger.error(
+              `Failed to fetch from ${source}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            )
+            // Continue with other sources even if one fails
+          }
+        }
+
+        if (allProxiesText.length > 0) {
+          // Combine all fetched proxies and import them
+          const combinedText = allProxiesText.join('\n')
+          await handleImportProxies(combinedText)
+          appLogger.info(
+            `Successfully loaded proxies from ${allProxiesText.length}/${sources.length} source(s)`
+          )
+        } else {
+          appLogger.error('No proxies fetched from any source')
+        }
+      } catch (error) {
+        appLogger.error(
+          `Failed to fetch proxies: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      }
+    },
+    [proxySources, handleImportProxies]
+  )
 
   const handleExportProxies = useCallback(() => {
-    const lines = proxies.map(proxy => {
-      const auth = proxy.username && proxy.password ? `${proxy.username}:${proxy.password}@` : '';
-      return `socks5://${auth}${proxy.host}:${proxy.port}`;
-    });
-    return lines.join('\n');
-  }, [proxies]);
+    return exportProxiesToString(proxies)
+  }, [proxies])
+
+  const handleClearAllProxies = useCallback(async () => {
+    try {
+      // Disable global proxy when clearing all proxies
+      const globalProxy = await window.ipcApi.proxy.getGlobal()
+      if (globalProxy?.enabled) {
+        appLogger.info('Clearing all proxies, disabling global proxy')
+        setConfig(null)
+        await window.ipcApi.proxy.setGlobal(null)
+      }
+    } catch (error) {
+      appLogger.error(
+        `Failed to disable global proxy: ${error instanceof Error ? error.message : 'Unknown'}`
+      )
+    }
+
+    clearAllProxies()
+    appLogger.info('All proxies cleared')
+  }, [clearAllProxies, setConfig])
 
   return {
-    form,
-    isEditing,
-    editingIndex,
     isPasswordVisible,
     setIsPasswordVisible,
-    handleAddProxy,
-    handleEditProxy,
-    handleUpdateProxy,
-    handleDeleteProxy,
-    handleCancelEdit,
+    handleSetProxy,
     handleTestProxy,
     handleTestAllProxies,
-    handleImportProxies,
+    handleStopTestAll,
+    handleDeleteInvalidProxies,
     handleExportProxies,
+    deleteProxy,
     enableProxies,
-    setEnableProxies,
     randomizeSource,
     setRandomizeSource,
-    sourceUrl,
-    setSourceUrl,
-    autoUpdateEnabled,
-    setAutoUpdateEnabled,
-    updateInterval,
-    setUpdateInterval,
+    proxySources,
+    setProxySources,
     maxRetries,
     setMaxRetries,
-    useRandomProxy,
-    setUseRandomProxy,
+    testTimeout,
+    setTestTimeout,
+    testUrl,
+    setTestUrl,
+    delayBetweenRetries,
+    setDelayBetweenRetries,
+    defaultProxyType,
+    setDefaultProxyType,
+    selectedProxyIndex,
+    setSelectedProxyIndex,
     isLoading: storeLoading,
     isTesting,
+    isTestingAll,
+    testProgress,
     proxies,
-    currentProxyIndex,
     testResults,
-  };
-};
+    handleImportProxies,
+    handleFetchFromExternalSource,
+    clearAllProxies: handleClearAllProxies,
+  }
+}

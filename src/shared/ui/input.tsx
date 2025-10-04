@@ -1,40 +1,52 @@
-import * as React from "react"
-import { Eye, EyeOff, Copy, Check, X } from "lucide-react"
+/**
+ * @file Input component with extended features
+ * @description Input wrapper with label, error state, floating label support,
+ * and copy button functionality. Fully typed for TypeScript.
+ */
+import { Check, Copy } from 'lucide-react'
+import * as React from 'react'
 
-import { cn } from "../utils/utils"
-import { Label } from "./label"
+import { cn } from '@/shared/utils/utils'
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  /** Input label text */
   label?: string
+  /** Error message to display */
   error?: string
+  /** Enable floating label style */
   floatingLabel?: boolean
+  /** Background color for floating label */
+  labelBackground?: string
+  /** Hide the copy button (for sensitive fields) */
   hideCopyButton?: boolean
-  hideClearButton?: boolean
-  hidePasswordToggle?: boolean
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, label, error, floatingLabel, hideCopyButton, hideClearButton, hidePasswordToggle, id, onChange, value, ...props }, ref) => {
-    const inputId = id || `input-${React.useId()}`
-    const [showPassword, setShowPassword] = React.useState(false)
+  (
+    {
+      className,
+      type,
+      label,
+      error,
+      floatingLabel = false,
+      labelBackground = 'rgb(var(--background))',
+      hideCopyButton = false,
+      id,
+      ...props
+    },
+    ref
+  ) => {
     const [copied, setCopied] = React.useState(false)
+    const inputId = id || React.useId()
+    const inputRef = React.useRef<HTMLInputElement | null>(null)
 
-    // Determine which buttons to show (enabled by default, can be hidden)
-    const showCopyButton = !hideCopyButton
-    const showClearButton = !hideClearButton
-    const showPasswordToggle = type === 'password' && !hidePasswordToggle
+    // Combine refs
+    React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement)
 
-    // Determine if we need to show any action buttons
-    const hasActions = showPasswordToggle || showCopyButton || showClearButton
-    const isPasswordField = type === 'password' && showPasswordToggle
-    const actualType = isPasswordField && showPassword ? 'text' : type
-
-    // Handle copy functionality
     const handleCopy = async () => {
-      if (value) {
+      if (inputRef.current?.value) {
         try {
-          await navigator.clipboard.writeText(String(value))
+          await navigator.clipboard.writeText(inputRef.current.value)
           setCopied(true)
           setTimeout(() => setCopied(false), 2000)
         } catch (err) {
@@ -43,173 +55,113 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       }
     }
 
-    // Handle clear functionality
-    const handleClear = () => {
-      if (onChange) {
-        const event = {
-          target: { value: '' },
-          currentTarget: { value: '' }
-        } as React.ChangeEvent<HTMLInputElement>
-        onChange(event)
-      }
-    }
-
-    // If floating label is requested, render the complete floating label structure
+    // If using floating label
     if (floatingLabel && label) {
       return (
-        <div className="space-y-2">
-          <div className={cn("relative", hasActions ? "group" : "")}>
-            <input
-              id={inputId}
-              type={actualType}
-              placeholder=" "
-              data-slot="input"
-              className={cn(
-                "peer file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input flex h-10 w-full min-w-0 rounded-md border bg-transparent px-4 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-                error ? "border-destructive focus-visible:ring-destructive" : "",
-                "py-2",
-                className
-              )}
-              ref={ref}
-              value={value}
-              onChange={onChange}
-              {...props}
-            />
-            <Label
-              htmlFor={inputId}
-              className="absolute left-4 -top-2.5 bg-background px-2 text-sm font-medium text-muted-foreground transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-muted-foreground peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-foreground"
-            >
-              {label}
-            </Label>
-
-            {/* Action buttons */}
-            {hasActions && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto transition-opacity duration-200 bg-background rounded-md shadow-sm">
-                {showPasswordToggle && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-muted"
-                    title={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                )}
-                {showCopyButton && (
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-muted"
-                    title="Copy to clipboard"
-                  >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                )}
-                {showClearButton && (
-                  <button
-                    type="button"
-                    onClick={handleClear}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-muted"
-                    title="Clear field"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
+        <div className="relative">
+          <input
+            id={inputId}
+            type={type}
+            ref={inputRef}
+            className={cn(
+              'peer flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+              error && 'border-destructive focus-visible:ring-destructive',
+              !hideCopyButton && type !== 'password' && 'pr-10',
+              className
             )}
-          </div>
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <span>{error}</span>
-            </div>
+            {...props}
+          />
+          <label
+            htmlFor={inputId}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-xs peer-focus:text-primary peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs px-1 pointer-events-none"
+            style={{ background: labelBackground }}
+          >
+            {label}
+          </label>
+          {!hideCopyButton && type !== 'password' && inputRef.current?.value && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+              title="Copy to clipboard"
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
           )}
+          {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>
       )
     }
 
-    // Default input without floating label
-    if (hasActions) {
+    // Standard input with label
+    if (label) {
       return (
-        <div className="relative group">
-          <input
-            id={inputId}
-            type={actualType}
-            data-slot="input"
-            className={cn(
-              "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input flex h-10 w-full min-w-0 rounded-md border bg-transparent px-4 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-              "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-              "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-              className
-            )}
-            ref={ref}
-            value={value}
-            onChange={onChange}
-            {...props}
-          />
-
-          {/* Action buttons */}
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto transition-opacity duration-200 bg-background rounded-md shadow-sm">
-            {showPasswordToggle && (
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-muted"
-                title={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            )}
-            {showCopyButton && (
+        <div className="space-y-2">
+          <label
+            htmlFor={inputId}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+          >
+            {label}
+          </label>
+          <div className="relative">
+            <input
+              id={inputId}
+              type={type}
+              ref={inputRef}
+              className={cn(
+                'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+                error && 'border-destructive focus-visible:ring-destructive',
+                !hideCopyButton && type !== 'password' && 'pr-10',
+                className
+              )}
+              {...props}
+            />
+            {!hideCopyButton && type !== 'password' && inputRef.current?.value && (
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-muted"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                 title="Copy to clipboard"
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
               </button>
             )}
-            {showClearButton && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-muted"
-                title="Clear field"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
+          {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>
       )
     }
 
+    // Basic input without label
     return (
-      <input
-        id={inputId}
-        type={actualType}
-        data-slot="input"
-        className={cn(
-          "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input flex h-10 w-full min-w-0 rounded-md border bg-transparent px-4 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-          "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-          "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-          className
+      <div className="relative">
+        <input
+          id={inputId}
+          type={type}
+          ref={inputRef}
+          className={cn(
+            'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+            error && 'border-destructive focus-visible:ring-destructive',
+            !hideCopyButton && type !== 'password' && 'pr-10',
+            className
+          )}
+          {...props}
+        />
+        {!hideCopyButton && type !== 'password' && inputRef.current?.value && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+            title="Copy to clipboard"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+          </button>
         )}
-        ref={ref}
-        value={value}
-        onChange={onChange}
-        {...props}
-      />
+        {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+      </div>
     )
   }
 )
-Input.displayName = "Input"
+Input.displayName = 'Input'
 
 export { Input }

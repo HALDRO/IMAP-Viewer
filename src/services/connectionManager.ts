@@ -2,140 +2,145 @@
  * @file Simple IMAP connection manager
  */
 
-import type { ImapFlow } from 'imapflow';
-import { getLogger } from './logger';
+import type { ImapFlow } from 'imapflow'
 
-const activeConnections = new Map<string, ImapFlow>();
-const pendingConnections = new Set<string>();
-const pendingConnectionPromises = new Map<string, Promise<ImapFlow>>();
+import { getLogger } from './logger'
+
+const activeConnections = new Map<string, ImapFlow>()
+const pendingConnectionPromises = new Map<string, Promise<ImapFlow>>()
 
 export const imapFlowConnectionManager = {
   get(accountId: string): ImapFlow | undefined {
-    const imap = activeConnections.get(accountId);
-    if (!imap) {
-      return undefined;
+    const imap = activeConnections.get(accountId)
+    if (imap?.usable) {
+      return imap
     }
-
-    // Check if connection is still usable
-    if (imap.usable === true) {
-      return imap;
+    if (imap) {
+      const logger = getLogger()
+      logger.warn({ accountId }, `Removing unusable connection for account ${accountId}`)
+      activeConnections.delete(accountId)
     }
-
-    // Remove unusable connection
-    activeConnections.delete(accountId);
-    return undefined;
+    return undefined
   },
 
   has(accountId: string): boolean {
-    const imap = activeConnections.get(accountId);
-    return imap ? imap.usable === true : false;
+    return this.get(accountId) !== undefined
   },
 
   set(accountId: string, imap: ImapFlow): void {
-    const logger = getLogger();
-    const existingConnection = activeConnections.get(accountId);
-    
-    if (existingConnection && existingConnection !== imap && existingConnection.usable) {
-      existingConnection.logout().catch((err: Error) => {
-        logger.error({ accountId, error: err.message }, `Error logging out existing connection for ${accountId}`);
-        existingConnection.close();
-      });
+    const logger = getLogger()
+
+    // Validate the connection before storing it
+    if (!imap?.usable) {
+      logger.warn({ accountId }, `Attempted to store unusable connection for account ${accountId}`)
+      return
     }
 
-    activeConnections.set(accountId, imap);
-    logger.debug({ accountId }, `Set connection for account ${accountId}`);
+    const existing = this.get(accountId)
+    if (existing && existing !== imap) {
+      logger.debug({ accountId }, `Replacing existing connection for account ${accountId}`)
+      existing.logout().catch((err: Error) => {
+        logger.error(
+          { accountId, error: err.message },
+          `Error logging out existing connection for ${accountId}`
+        )
+        existing.close()
+      })
+    }
+
+    activeConnections.set(accountId, imap)
+    logger.debug({ accountId }, `Set connection for account ${accountId}`)
   },
 
   async end(accountId: string): Promise<void> {
-    const imap = activeConnections.get(accountId);
+    const logger = getLogger()
+    const imap = activeConnections.get(accountId)
     if (imap) {
+      activeConnections.delete(accountId)
       try {
         if (imap.usable) {
-          await imap.logout();
+          await imap.logout()
+          logger.info(`Closed connection for account ${accountId}`)
         } else {
-          imap.close();
+          imap.close()
+          logger.info(`Force-closed unusable connection for account ${accountId}`)
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error(`Error closing connection for ${accountId}:`, err);
-        imap.close();
-      } finally {
-        activeConnections.delete(accountId);
-        // eslint-disable-next-line no-console
-        console.log(`Closed connection for account ${accountId}`);
+        logger.error(
+          { accountId, error: (err as Error).message },
+          `Error closing connection for ${accountId}`
+        )
+        imap.close() // Ensure it's closed even on logout error
       }
     }
+    pendingConnectionPromises.delete(accountId)
   },
 
   async endAll(): Promise<void> {
-    const closePromises = Array.from(activeConnections.entries()).map(
-      async ([accountId, imap]) => {
-        try {
-          // eslint-disable-next-line no-console
-          console.log(`Closing connection for ${accountId}`);
-          if (imap.usable) {
-            await imap.logout();
-          } else {
-            imap.close();
-          }
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error(`Error closing connection for ${accountId}:`, err);
-          imap.close();
-        }
-      }
-    );
-
-    await Promise.allSettled(closePromises);
-    activeConnections.clear();
-    pendingConnections.clear();
-    // eslint-disable-next-line no-console
-    console.log('All active IMAP connections have been closed.');
-  },
-
-  // Pending connection management
-  addPendingConnection(accountId: string): void {
-    pendingConnections.add(accountId);
-  },
-
-  removePendingConnection(accountId: string): void {
-    pendingConnections.delete(accountId);
-  },
-
-  hasPendingConnection(accountId: string): boolean {
-    return pendingConnections.has(accountId);
+    const logger = getLogger()
+    logger.info('Closing all active IMAP connections.')
+    const closePromises = Array.from(activeConnections.keys()).map(id => this.end(id))
+    await Promise.allSettled(closePromises)
+    logger.info('All active IMAP connections have been closed.')
   },
 
   setPendingConnection(accountId: string, connectionPromise: Promise<ImapFlow>): void {
-    pendingConnections.add(accountId);
-    pendingConnectionPromises.set(accountId, connectionPromise);
+    const logger = getLogger()
 
-    // Clean up when promise resolves and store successful connection
+    // Clear any existing pending connection
+    if (pendingConnectionPromises.has(accountId)) {
+      logger.debug({ accountId }, `Replacing existing pending connection for account ${accountId}`)
+    }
+
+    pendingConnectionPromises.set(accountId, connectionPromise)
+    logger.debug({ accountId }, `Set pending connection promise for account ${accountId}`)
+
     connectionPromise
-      .then((imap) => {
-        // Store successful connection
-        activeConnections.set(accountId, imap);
-        const logger = getLogger();
-        logger.debug({ accountId }, `Stored connection for account ${accountId} from pending promise`);
+      .then(imap => {
+        // Validate connection before storing
+        if (imap?.usable) {
+          this.set(accountId, imap)
+          logger.debug(
+            { accountId },
+            `Stored connection for account ${accountId} from pending promise`
+          )
+        } else {
+          logger.warn(
+            { accountId },
+            `Pending connection resolved with unusable IMAP for account ${accountId}`
+          )
+        }
       })
-      .catch(() => {
-        // Connection failed, just clean up
+      .catch(error => {
+        logger.warn(
+          { accountId, error: error instanceof Error ? error.message : String(error) },
+          `Pending connection failed for account ${accountId}`
+        )
+        // Remove any partial connection state
+        activeConnections.delete(accountId)
       })
       .finally(() => {
-        pendingConnections.delete(accountId);
-        pendingConnectionPromises.delete(accountId);
-      });
+        pendingConnectionPromises.delete(accountId)
+        logger.debug(
+          { accountId },
+          `Cleaned up pending connection promise for account ${accountId}`
+        )
+      })
   },
 
   async getOrWaitForConnection(accountId: string): Promise<ImapFlow | null> {
-    const pendingPromise = pendingConnectionPromises.get(accountId);
+    const pendingPromise = pendingConnectionPromises.get(accountId)
     if (pendingPromise) {
       try {
-        return await pendingPromise;
-      } catch (error) {
-        return null;
+        return await pendingPromise
+      } catch (_error) {
+        return null
       }
     }
-    return null;
+    return null
   },
-};
+
+  hasPendingConnection(accountId: string): boolean {
+    return pendingConnectionPromises.has(accountId)
+  },
+}

@@ -1,105 +1,64 @@
 /**
- * @file The main layout component using react-resizable-panels.
- * It sets up the three-panel view for the application.
+ * @file Main layout component with shadcn resizable panels architecture
+ * @description Fully unified three-level resizable panel architecture using only shadcn components (ResizablePanel/ResizablePanelGroup/ResizableHandle):
+ *
+ * Layout structure:
+ * - Level 1 (horizontal): Main area + Right account panel
+ *   - Level 2 (vertical): Content + Log panel
+ *     - Level 3 (horizontal): Left email list + Center email view
+ *
+ * All panels support:
+ * - Mouse drag resizing via ResizableHandle
+ * - Programmatic collapse/expand via ImperativePanelHandle refs
+ * - State persistence via UIStore + localStorage
+ * - Callbacks: onResize, onCollapse, onExpand sync with store
+ *
+ * Browser: Always-mounted overlay (z-30) over email view panel, visibility controlled via CSS
+ * Minimum window size: 900x700 to ensure all panels are usable
+ *
+ * Architecture improvements:
+ * - Eliminated raw Panel/PanelGroup mixing (was breaking resize functionality)
+ * - Uniform shadcn ResizablePanel* everywhere enables proper mouse drag
+ * - Imperative refs (leftPanelRef, logPanelRef, accountManagerPanelRef) for programmatic control
+ * - useEffect hooks sync collapsed state changes from buttons/store to panel API
+ * - InAppBrowser always mounted to preserve WebContentsView state (history, cookies, DOM) across navigation
+ * - Removed mobile layout logic as Electron apps run only on desktop platforms
  */
-import { ArrowLeft, PanelLeft } from 'lucide-react';
-import React, { useEffect, useState, useRef } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels';
+import { motion } from 'framer-motion'
+import { Eraser, Globe, PanelLeft } from 'lucide-react'
+import React, { useState, useRef } from 'react'
+import type { ImperativePanelHandle } from 'react-resizable-panels'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../shared/ui/resizable'
 
+import { useAccountStore } from '../shared/store/accounts/accountStore'
+import { useMainSettingsStore } from '../shared/store/mainSettingsStore'
+import { useUIStore } from '../shared/store/uiStore'
+import { ToastContainer } from '../shared/ui/Toast'
+import { Button } from '../shared/ui/button'
+import { TopBar, TopBarSection, TopBarTitle } from '../shared/ui/top-bar'
+import { TopBarAccountSection } from '../shared/ui/top-bar-account-section'
+import { logger as appLogger } from '../shared/utils/logger'
+import { cn } from '../shared/utils/utils'
 
-import { useAccountStore } from '../shared/store/accounts/accountStore';
-import { useMainSettingsStore } from '../shared/store/mainSettingsStore';
-import { useUIStore } from '../shared/store/uiStore';
-import { Button } from '../shared/ui/button';
-import { ToastContainer } from '../shared/ui/Toast';
-import { TopBar, TopBarSection, TopBarTitle, TopBarSearch } from '../shared/ui/top-bar';
-import { TopBarAccountSection } from '../shared/ui/top-bar-account-section';
-import { logger as appLogger } from '../shared/utils/logger';
-
-import AccountManagerPanel from './AccountManager';
-import { DeleteAllAccountsDialog } from './DeleteAllAccountsDialog';
-import EmailListPanel from './EmailListPanel';
-import EmailViewPanel from './EmailViewPanel';
-import { ImportDialog } from './ImportDialog';
-import LogPanel from './LogPanel';
-
-/**
- * Global styles for YouTube-inspired dark mode theme
- */
-const GlobalStyles = (): null => {
-  useEffect(() => {
-    // Add dark class to body for dark theme
-    document.body.classList.add('dark');
-
-    const style = document.createElement('style');
-    style.textContent = `
-      /* Utility class to hide number input spinners */
-      .hide-spin-buttons::-webkit-outer-spin-button,
-      .hide-spin-buttons::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      .hide-spin-buttons {
-        -moz-appearance: textfield !important;
-      }
-
-      /* Hide number input spinners (general rule, kept as fallback) */
-      input[type='number']::-webkit-outer-spin-button,
-      input[type='number']::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      input[type='number'] {
-        -moz-appearance: textfield;
-      }
-      
-      /* Selection color */
-      ::selection {
-        background: rgba(59, 130, 246, 0.4);
-        color: white;
-      }
-      
-      /* YouTube-style focus outlines */
-      *:focus-visible {
-        outline: 2px solid rgba(59, 130, 246, 0.5);
-        outline-offset: 2px;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return (): void => {
-      style.remove();
-    };
-  }, []);
-  
-  return null;
-};
-
-/**
- * Custom resize handle with YouTube-inspired design
- */
-const CustomResizeHandle = ({ direction = 'horizontal', className = '' }: { direction?: 'horizontal' | 'vertical'; className?: string }): React.JSX.Element => {
-  return (
-    <PanelResizeHandle
-      className={`flex items-center justify-center transition-colors bg-border ${
-        direction === 'horizontal'
-          ? 'w-px hover:bg-primary/20'
-          : 'h-px hover:bg-primary/20'
-      } ${className}`}
-    />
-  );
-};
+import AccountManagerPanel from './AccountManager'
+import { ClearBrowserDataDialog } from './ClearBrowserDataDialog'
+import { DeleteAllAccountsDialog } from './DeleteAllAccountsDialog'
+import EmailListPanel from './EmailListPanel'
+import EmailViewPanel from './EmailViewPanel'
+import { ImportDialog } from './ImportDialog'
+import InAppBrowser from './InAppBrowser'
+import LogPanel from './LogPanel'
 
 const Layout = (): React.JSX.Element => {
-  const accounts = useAccountStore((state) => state.accounts);
-  const accountCount = React.useMemo(() => accounts.length, [accounts.length]);
-  const { settings } = useMainSettingsStore();
+  const accounts = useAccountStore(state => state.accounts)
+  const accountCount = React.useMemo(() => accounts.length, [accounts.length])
+  const { settings } = useMainSettingsStore()
   const {
     currentView,
     openSettings,
     closeSettings,
-    isLeftPanelHidden,
-    setLeftPanelHidden,
+    isLeftPanelCollapsed: isLeftPanelHidden,
+    setLeftPanelCollapsed: setLeftPanelHidden,
     isSettingsOpen,
     isAccountPanelCollapsed,
     setAccountPanelCollapsed,
@@ -108,195 +67,269 @@ const Layout = (): React.JSX.Element => {
     rightPanelWidth,
     logPanelHeight,
     setPanelSizes,
-    loadConfig
-  } = useUIStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isConnectingAll, setIsConnectingAll] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
-  const accountManagerPanelRef = useRef<ImperativePanelHandle>(null);
-  const logPanelRef = useRef<ImperativePanelHandle>(null);
+    loadConfig,
+    isBrowserOpen,
+    isBrowserMinimized,
+    browserUrl,
+  } = useUIStore()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isConnectingAll, setIsConnectingAll] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false)
+  const [isClearBrowserDataDialogOpen, setIsClearBrowserDataDialogOpen] = useState(false)
+  const accountManagerPanelRef = useRef<ImperativePanelHandle>(null)
+  const logPanelRef = useRef<ImperativePanelHandle>(null)
+  const leftPanelRef = useRef<ImperativePanelHandle>(null)
 
   // Load UI config on mount
   React.useEffect(() => {
-    void loadConfig();
-  }, [loadConfig]); // Include loadConfig dependency
+    void loadConfig()
+  }, [loadConfig])
 
-  const handleCollapse = React.useCallback(() => {
-    accountManagerPanelRef.current?.collapse();
-  }, []);
+  // Sync left panel
+  const handleLeftPanelCollapse = React.useCallback(() => {
+    leftPanelRef.current?.collapse()
+  }, [])
 
-  const handleExpand = React.useCallback(() => {
-    accountManagerPanelRef.current?.expand();
-  }, []);
+  const handleLeftPanelExpand = React.useCallback(() => {
+    leftPanelRef.current?.expand()
+  }, [])
 
+  React.useEffect(() => {
+    if (isLeftPanelHidden) {
+      handleLeftPanelCollapse()
+    } else {
+      handleLeftPanelExpand()
+    }
+  }, [isLeftPanelHidden, handleLeftPanelCollapse, handleLeftPanelExpand])
+
+  // Sync log panel
   const handleLogPanelCollapse = React.useCallback(() => {
-    logPanelRef.current?.collapse();
-  }, []);
+    logPanelRef.current?.collapse()
+  }, [])
 
   const handleLogPanelExpand = React.useCallback(() => {
-    logPanelRef.current?.expand();
-  }, []);
+    logPanelRef.current?.expand()
+  }, [])
 
-  // Sync log panel state with UI store
   React.useEffect(() => {
     if (isLogPanelCollapsed) {
-      handleLogPanelCollapse();
+      handleLogPanelCollapse()
     } else {
-      handleLogPanelExpand();
+      handleLogPanelExpand()
     }
-  }, [isLogPanelCollapsed, handleLogPanelCollapse, handleLogPanelExpand]);
+  }, [isLogPanelCollapsed, handleLogPanelCollapse, handleLogPanelExpand])
 
+  // Sync account panel - inline calls to avoid unused vars
+  React.useEffect(() => {
+    if (isAccountPanelCollapsed) {
+      accountManagerPanelRef.current?.collapse()
+    } else {
+      accountManagerPanelRef.current?.expand()
+    }
+  }, [isAccountPanelCollapsed])
+
+  // handleConnectAllAccounts - remains the same
   const handleConnectAllAccounts = React.useCallback(() => {
-    // Получаем актуальные аккаунты из стора
-    const currentAccounts = useAccountStore.getState().accounts;
-    
+    const currentAccounts = useAccountStore.getState().accounts
+
     if (currentAccounts.length === 0) {
-      appLogger.info('No accounts to connect to.');
-      return;
+      appLogger.info('No accounts to connect to.')
+      return
     }
 
-    setIsConnectingAll(true);
+    setIsConnectingAll(true)
     try {
-      appLogger.info(`Starting to connect to ${currentAccounts.length} accounts...`);
+      appLogger.info(`Starting to connect to ${currentAccounts.length} accounts...`)
 
-      // Start watching all accounts in the background
-      currentAccounts.forEach(account => {
-        void window.ipcApi.watchInbox(account.id);
-      });
+      for (const account of currentAccounts) {
+        void window.ipcApi.watchInbox(account.id)
+      }
 
-      appLogger.info(`Successfully started watching ${currentAccounts.length} accounts.`);
+      appLogger.info(`Successfully started watching ${currentAccounts.length} accounts.`)
     } catch (error) {
-      appLogger.error(`Failed to connect to accounts: ${error instanceof Error ? error.message : String(error)}`);
+      appLogger.error(
+        `Failed to connect to accounts: ${error instanceof Error ? error.message : String(error)}`
+      )
     } finally {
-      setIsConnectingAll(false);
+      setIsConnectingAll(false)
     }
-  }, []); // Убираем зависимость от accounts
+  }, [])
 
-  // Handle data files access
+  // Other handlers remain the same: handleDataFiles, handleImportAccounts, handleDeleteAllAccounts, handleToggleBrowser, handleClearBrowserData, handleConfirmClearBrowserData, handleConfirmDeleteAll
+
   const handleDataFiles = React.useCallback(async () => {
     try {
-      await window.ipcApi.openDataFolder();
-      appLogger.info('Data folder opened');
+      await window.ipcApi.openDataFolder()
+      appLogger.info('Data folder opened')
     } catch (error) {
-      appLogger.error('Failed to open data folder:', error as object);
+      appLogger.error('Failed to open data folder:', error as object)
     }
-  }, []);
+  }, [])
 
-  // Handle import accounts
   const handleImportAccounts = React.useCallback(() => {
-    setIsImportDialogOpen(true);
-  }, []);
+    setIsImportDialogOpen(true)
+  }, [])
 
-  // Handle delete all accounts
   const handleDeleteAllAccounts = React.useCallback(() => {
-    setIsDeleteAllDialogOpen(true);
-  }, []);
+    setIsDeleteAllDialogOpen(true)
+  }, [])
 
-  // Handle confirm delete all accounts
+  const handleToggleBrowser = React.useCallback(() => {
+    const { openBrowser, minimizeBrowser, isBrowserOpen, isBrowserMinimized } =
+      useUIStore.getState()
+
+    if (isBrowserOpen && !isBrowserMinimized) {
+      minimizeBrowser()
+    } else {
+      openBrowser('https://www.duckduckgo.com')
+    }
+  }, [])
+
+  const handleClearBrowserData = React.useCallback(() => {
+    setIsClearBrowserDataDialogOpen(true)
+  }, [])
+
+  const handleConfirmClearBrowserData = React.useCallback(async () => {
+    try {
+      const result = await window.ipcApi.clearBrowserData()
+      if (result.success) {
+        appLogger.info('Browser data cleared successfully')
+      } else {
+        appLogger.error(`Failed to clear browser data: ${result.error ?? 'Unknown error'}`)
+      }
+    } catch (error) {
+      appLogger.error('Error clearing browser data:', error as object)
+    }
+  }, [])
+
   const handleConfirmDeleteAll = React.useCallback(async () => {
     try {
-      // First delete all accounts from file via IPC
-      await window.ipcApi.deleteAllAccounts();
+      await window.ipcApi.deleteAllAccounts()
 
-      // Then clear the store
-      const { deleteAllAccounts } = useAccountStore.getState();
-      deleteAllAccounts();
+      const { deleteAllAccounts } = useAccountStore.getState()
+      deleteAllAccounts()
 
-      appLogger.info('All accounts deleted by user');
+      appLogger.info('All accounts deleted by user')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      appLogger.error('Failed to delete all accounts:', { error: errorMessage });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      appLogger.error('Failed to delete all accounts:', { error: errorMessage })
     }
-  }, []);
+  }, [])
 
-  // Handle left panel toggle
-  const handleToggleLeftPanel = React.useCallback(() => {
-    setLeftPanelHidden(!isLeftPanelHidden);
-  }, [isLeftPanelHidden, setLeftPanelHidden]);
-
+  // handleToggleAccountPanel - remains, toggles setAccountPanelCollapsed
   const handleToggleAccountPanel = React.useCallback(() => {
-    if (isAccountPanelCollapsed) {
-      handleExpand();
+    setAccountPanelCollapsed(!isAccountPanelCollapsed)
+  }, [isAccountPanelCollapsed, setAccountPanelCollapsed])
+
+  // handleToggleLeftPanel
+  const handleToggleLeftPanel = React.useCallback(() => {
+    if (isLeftPanelHidden) {
+      handleLeftPanelExpand()
     } else {
-      handleCollapse();
+      handleLeftPanelCollapse()
     }
-  }, [isAccountPanelCollapsed, handleExpand, handleCollapse]);
+  }, [isLeftPanelHidden, handleLeftPanelExpand, handleLeftPanelCollapse])
 
-  // Handle panel resize - optimized for performance during drag
-  const handleLeftPanelResize = React.useCallback((size: number) => {
-    // Minimal operations during resize for smooth dragging
-    setPanelSizes({ leftPanelWidth: size });
-  }, [setPanelSizes]);
+  // Handle layout changes - called only when resize is complete (mouse up)
+  const handleMainLayoutChange = React.useCallback(
+    (sizes: number[]) => {
+      if (sizes.length >= 2) {
+        setPanelSizes({ rightPanelWidth: sizes[1] })
+      }
+    },
+    [setPanelSizes]
+  )
 
-  const handleRightPanelResize = React.useCallback((size: number) => {
-    setPanelSizes({ rightPanelWidth: size });
-  }, [setPanelSizes]);
+  const handleContentLayoutChange = React.useCallback(
+    (sizes: number[]) => {
+      if (sizes.length >= 2) {
+        setPanelSizes({ logPanelHeight: sizes[1] })
+      }
+    },
+    [setPanelSizes]
+  )
 
-  const handleLogPanelResize = React.useCallback((size: number) => {
-    // Minimal operations during resize for smooth dragging
-    setPanelSizes({ logPanelHeight: size });
-  }, [setPanelSizes]);
+  const handleEmailLayoutChange = React.useCallback(
+    (sizes: number[]) => {
+      if (sizes.length >= 2) {
+        setPanelSizes({ leftPanelWidth: sizes[0] })
+      }
+    },
+    [setPanelSizes]
+  )
 
-  // Get current view title
+  // getViewTitle - remains
   const getViewTitle = React.useMemo(() => {
     switch (currentView) {
       case 'settings':
-        return 'Settings';
-      case 'email':
+        return 'Settings'
       default:
-        return 'IMAP Viewer';
+        return 'IMAP Viewer'
     }
-  }, [currentView]);
+  }, [currentView])
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background text-foreground">
-      <GlobalStyles />
-
-      {/* Skip to main content link for accessibility */}
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-
       {/* Top Bar */}
       <TopBar>
         <TopBarSection side="left" className="pl-1 pr-1">
-          {currentView === 'settings' ? (
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              onClick={closeSettings}
+              onClick={handleToggleLeftPanel}
               className="rounded-full h-9 w-9"
+              title={isLeftPanelHidden ? 'Expand left panel' : 'Collapse left panel'}
             >
-              <ArrowLeft size={18} />
+              <PanelLeft size={18} />
             </Button>
+            <Button
+              variant={isBrowserOpen && !isBrowserMinimized ? 'default' : 'ghost'}
+              size="sm"
+              onClick={handleToggleBrowser}
+              className="rounded-full h-9 px-3 gap-1.5"
+              title={
+                isBrowserOpen && !isBrowserMinimized
+                  ? 'Minimize browser (Ctrl+Shift+B)'
+                  : 'Open browser (Ctrl+Shift+B)'
+              }
+            >
+              <Globe size={16} />
+              <span className="text-sm font-medium">Browser</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClearBrowserData}
+              className="rounded-full h-9 w-9"
+              title="Clear browser data"
+            >
+              <Eraser size={16} />
+            </Button>
+          </div>
+        </TopBarSection>
+
+        <TopBarSection side="center">
+          {currentView === 'settings' ? (
+            <TopBarTitle size="md">{getViewTitle}</TopBarTitle>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleToggleLeftPanel}
-                className="rounded-full h-8 w-8"
-                title={isLeftPanelHidden ? "Show left panel" : "Hide left panel"}
-              >
-                <PanelLeft size={16} />
-              </Button>
-              <TopBarSearch
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search..."
+            <div className="flex items-center justify-center gap-3">
+              <img
+                src="/icon.svg"
+                alt="IMAP Viewer"
+                className="h-11 w-11 transition-transform hover:scale-125"
+                onError={e => {
+                  e.currentTarget.style.display = 'none'
+                }}
               />
             </div>
           )}
         </TopBarSection>
 
-        <TopBarSection side="center">
-          <TopBarTitle size="md">{getViewTitle}</TopBarTitle>
-        </TopBarSection>
-
-        <TopBarSection side="right" className="pl-1 pr-0.0">
+        <TopBarSection side="right" className="pl-1 pr-0">
           <TopBarAccountSection
-                          accountCount={accountCount}
+            accountCount={accountCount}
             isCollapsed={isAccountPanelCollapsed}
             isConnectingAll={isConnectingAll}
             isSettingsOpen={isSettingsOpen}
@@ -310,141 +343,139 @@ const Layout = (): React.JSX.Element => {
         </TopBarSection>
       </TopBar>
 
-      <div className="flex-1 overflow-hidden">
-        <PanelGroup
-          direction="horizontal"
-          aria-label="Main application layout"
-          storage={{
-            getItem: (name: string) => {
-              const value = localStorage.getItem(`panel-layout-${name}`);
-              return value !== null && value.length > 0 ? JSON.parse(value) : null;
-            },
-            setItem: (name: string, value: unknown) => {
-              localStorage.setItem(`panel-layout-${name}`, JSON.stringify(value));
-            }
-          }}
-        >
-        <Panel id="main-panel" order={1}>
-          <PanelGroup
-            direction="vertical"
-            storage={{
-              getItem: (name: string) => {
-                const value = localStorage.getItem(`panel-layout-vertical-${name}`);
-                return value !== null && value.length > 0 ? JSON.parse(value) : null;
-              },
-              setItem: (name: string, value: unknown) => {
-                localStorage.setItem(`panel-layout-vertical-${name}`, JSON.stringify(value));
-              }
-            }}
-          >
-            <Panel id="content-panel" order={1}>
-              <PanelGroup
-                direction="horizontal"
-                storage={{
-                  getItem: (name: string) => {
-                    const value = localStorage.getItem(`panel-layout-content-${name}`);
-                    return value !== null && value.length > 0 ? JSON.parse(value) : null;
-                  },
-                  setItem: (name: string, value: unknown) => {
-                    localStorage.setItem(`panel-layout-content-${name}`, JSON.stringify(value));
-                  }
-                }}
-              >
-                {!isLeftPanelHidden && (
-                  <>
-                    <Panel
-                      id="left-panel"
-                      order={1}
-                      defaultSize={leftPanelWidth}
-                      minSize={20}
-                      className="border-r border-border"
-                      onResize={handleLeftPanelResize}
-                    >
-                      <EmailListPanel searchQuery={searchQuery} />
-                    </Panel>
-                    <CustomResizeHandle direction="horizontal" />
-                  </>
-                )}
-                <Panel id="email-view-panel" order={2} minSize={30}>
-                  <div className="h-full flex flex-col">
-                    <div className="flex-1">
-                      <EmailViewPanel searchQuery={searchQuery} />
+      {/* Main content */}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Desktop: ResizablePanelGroup horizontal for main + right */}
+        <ResizablePanelGroup direction="horizontal" onLayout={handleMainLayoutChange}>
+          <ResizablePanel defaultSize={100 - rightPanelWidth} minSize={60}>
+            {/* Main content: vertical group left-center-log */}
+            <ResizablePanelGroup direction="vertical" onLayout={handleContentLayoutChange}>
+              <ResizablePanel defaultSize={100 - logPanelHeight} minSize={40}>
+                <ResizablePanelGroup direction="horizontal" onLayout={handleEmailLayoutChange}>
+                  <ResizablePanel
+                    ref={leftPanelRef}
+                    defaultSize={leftPanelWidth}
+                    minSize={7}
+                    maxSize={40}
+                    collapsible
+                    collapsedSize={5}
+                    onCollapse={() => setLeftPanelHidden(true)}
+                    onExpand={() => setLeftPanelHidden(false)}
+                    className={cn(
+                      'min-w-20',
+                      'border-r border-border' // Always show 1px border (ResizableHandle no longer provides background)
+                    )}
+                  >
+                    <EmailListPanel
+                      searchQuery={searchQuery}
+                      onSearchChange={setSearchQuery}
+                      collapsed={isLeftPanelHidden}
+                    />
+                  </ResizablePanel>
+
+                  <ResizableHandle className="hover:bg-primary/20" />
+
+                  <ResizablePanel minSize={30} className="relative">
+                    <div className="h-full flex flex-col">
+                      <div className="flex-1">
+                        <EmailViewPanel searchQuery={searchQuery} />
+                      </div>
+                      {/* Browser overlay - always mounted, visibility controlled via CSS (--z-browser: 20) */}
+                      <motion.div
+                        initial={false}
+                        animate={{
+                          opacity: isBrowserOpen && !isBrowserMinimized ? 1 : 0,
+                          pointerEvents: isBrowserOpen && !isBrowserMinimized ? 'auto' : 'none',
+                        }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute inset-0 z-[var(--z-browser)] bg-background"
+                      >
+                        <InAppBrowser
+                          initialUrl={browserUrl || 'https://www.google.com'}
+                          isVisible={isBrowserOpen && !isBrowserMinimized}
+                          onUrlChange={url => {
+                            appLogger.info(`Browser URL changed to: ${url}`)
+                          }}
+                        />
+                      </motion.div>
                     </div>
-                  </div>
-                </Panel>
-              </PanelGroup>
-            </Panel>
-            {!settings.hideEventLogger && (
-              <>
-                <CustomResizeHandle direction="vertical" />
-                <Panel
-                  id="log-panel"
-                  order={2}
-                  ref={logPanelRef}
-                  defaultSize={logPanelHeight}
-                  minSize={10}
-                  collapsible
-                  collapsedSize={8}
-                  className="border border-border"
-                  onResize={handleLogPanelResize}
-                  onCollapse={() => {
-                    // Panel collapsed by user interaction
-                  }}
-                  onExpand={() => {
-                    // Panel expanded by user interaction
-                  }}
-                >
-                  <LogPanel />
-                </Panel>
-              </>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </ResizablePanel>
+
+              {!settings.hideEventLogger && (
+                <>
+                  {!isLogPanelCollapsed && <ResizableHandle className="hover:bg-primary/20" />}
+                  <ResizablePanel
+                    ref={logPanelRef}
+                    defaultSize={15}
+                    collapsible
+                    collapsedSize={6}
+                    className={cn(
+                      'min-h-[56px]',
+                      isLogPanelCollapsed ? 'border-t border-border' : '' // Conditional border: 1px collapsed only, expanded has ResizableHandle (1px)
+                    )}
+                    onCollapse={() => useUIStore.getState().setLogPanelCollapsed(true)}
+                    onExpand={() => useUIStore.getState().setLogPanelCollapsed(false)}
+                  >
+                    <LogPanel />
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
+          </ResizablePanel>
+
+          <ResizableHandle className="hover:bg-primary/20" />
+
+          <ResizablePanel
+            ref={accountManagerPanelRef}
+            defaultSize={rightPanelWidth}
+            minSize={8} // 8% min in expanded
+            maxSize={40}
+            collapsible
+            collapsedSize={6} // 6% when collapsed
+            onCollapse={() => setAccountPanelCollapsed(true)}
+            onExpand={() => setAccountPanelCollapsed(false)}
+            data-panel-id="account-panel"
+            className={cn(
+              'flex flex-col bg-background min-w-20', // Base styles
+              'border-l border-border' // Always show 1px border (ResizableHandle no longer provides background)
             )}
-          </PanelGroup>
-        </Panel>
-        <CustomResizeHandle direction="horizontal" />
-        <Panel
-          id="account-panel"
-          ref={accountManagerPanelRef}
-          defaultSize={rightPanelWidth}
-          minSize={15}
-          maxSize={40}
-          collapsible
-          collapsedSize={7}
-          onCollapse={() => setAccountPanelCollapsed(true)}
-          onExpand={() => setAccountPanelCollapsed(false)}
-          onResize={handleRightPanelResize}
-          order={2}
-        >
-          <div className="h-full w-full">
+          >
             <AccountManagerPanel
               collapsed={isAccountPanelCollapsed}
+              onRequestExpand={() => setAccountPanelCollapsed(false)}
             />
-          </div>
-        </Panel>
-      </PanelGroup>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
-      {/* Toast notifications */}
+      {/* Toast notifications - remains */}
       <ToastContainer />
 
-      {/* Import Dialog */}
+      {/* Dialogs - remain the same */}
       <ImportDialog
         isOpen={isImportDialogOpen}
         onClose={() => setIsImportDialogOpen(false)}
         onImportComplete={() => {
-          setIsImportDialogOpen(false);
-          // Accounts will be automatically updated through the store
+          setIsImportDialogOpen(false)
         }}
       />
 
-      {/* Delete All Accounts Dialog */}
       <DeleteAllAccountsDialog
         isOpen={isDeleteAllDialogOpen}
         onClose={() => setIsDeleteAllDialogOpen(false)}
         onConfirm={handleConfirmDeleteAll}
-                      accountCount={accountCount}
+        accountCount={accountCount}
+      />
+
+      <ClearBrowserDataDialog
+        isOpen={isClearBrowserDataDialogOpen}
+        onClose={() => setIsClearBrowserDataDialogOpen(false)}
+        onConfirm={handleConfirmClearBrowserData}
       />
     </div>
-  );
-};
+  )
+}
 
-export default Layout;
+export default Layout

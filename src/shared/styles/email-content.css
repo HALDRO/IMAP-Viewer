@@ -1,18 +1,20 @@
 /**
  * @file CSS styles for email content display
- * Ensures proper rendering of HTML emails while maintaining security
+ * @description Ensures proper rendering of HTML emails while maintaining security.
+ * Uses CSS variables from design system for consistent theming.
  */
 
 .email-content {
   /* Base styles - use full available space */
-  color: white;
-  line-height: 1.6;
+  color: rgb(var(--color-foreground));
+  line-height: var(--line-height-relaxed);
   word-wrap: break-word;
   overflow-wrap: break-word;
-  padding: 1rem;
+  padding: var(--spacing-4);
   margin: 0;
   min-height: 100%;
   box-sizing: border-box;
+  font-family: var(--font-sans);
 }
 
 /* Typography */
@@ -22,7 +24,7 @@
 .email-content h4,
 .email-content h5,
 .email-content h6 {
-  color: white;
+  color: rgb(var(--color-foreground));
   margin-top: 1.5em;
   margin-bottom: 0.5em;
   font-weight: 600;
@@ -37,24 +39,24 @@
 
 .email-content p {
   margin-bottom: 1em;
-  color: white;
+  color: rgb(var(--color-foreground));
 }
 
 .email-content strong,
 .email-content b {
   font-weight: 600;
-  color: white;
+  color: rgb(var(--color-foreground));
 }
 
 .email-content em,
 .email-content i {
   font-style: italic;
-  color: white;
+  color: rgb(var(--color-foreground));
 }
 
 .email-content u {
   text-decoration: underline;
-  color: white;
+  color: rgb(var(--color-foreground));
 }
 
 /* Lists */
@@ -62,35 +64,75 @@
 .email-content ol {
   margin: 1em 0;
   padding-left: 2em;
-  color: white;
+  color: rgb(var(--color-foreground));
 }
 
 .email-content li {
   margin-bottom: 0.5em;
-  color: white;
+  color: rgb(var(--color-foreground));
 }
 
 /* Links */
 .email-content a {
-  color: #60a5fa;
+  color: rgb(var(--color-primary));
   text-decoration: underline;
   transition: color 0.2s;
+  font-weight: 500;
 }
 
 .email-content a:hover {
-  color: #93c5fd;
+  color: rgb(var(--color-primary) / 0.8);
+}
+
+/* Custom classes for dynamically generated content */
+.email-link {
+  color: rgb(var(--color-primary));
+  text-decoration: underline;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-base) var(--ease-smooth);
+}
+
+.email-link:hover {
+  color: rgb(var(--color-primary) / 0.8);
+}
+
+.email-highlight-strong {
+  color: rgb(var(--color-accent));
+  font-weight: var(--font-weight-semibold);
+}
+
+.email-highlight-em {
+  color: rgb(var(--color-accent) / 0.9);
+  font-style: italic;
+}
+
+.email-text-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: var(--font-sans);
+  line-height: var(--line-height-loose);
+  color: rgb(var(--color-foreground));
+  padding: var(--spacing-4);
+  background: rgb(var(--color-card) / 0.3);
+  border-radius: var(--radius-base);
+  border: 1px solid rgb(var(--color-border));
+}
+
+.email-no-content {
+  color: rgb(var(--color-foreground));
+  padding: var(--spacing-5);
 }
 
 /* Images */
 .email-content img {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
-  margin: 0.5em 0;
+  border-radius: var(--radius-sm);
+  margin: var(--spacing-2) 0;
   display: block;
-  background-color: rgba(55, 65, 81, 0.3);
-  border: 1px solid rgba(75, 85, 99, 0.3);
-  padding: 4px;
+  background-color: rgb(var(--color-muted) / 0.3);
+  border: 1px solid rgb(var(--color-border));
+  padding: var(--spacing-1);
 }
 
 /* Handle broken images */
@@ -114,53 +156,52 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #9CA3AF;
-  font-size: 12px;
+  color: rgb(var(--color-muted-foreground));
+  font-size: var(--font-size-xs);
   text-align: center;
   width: 100%;
 }
 
 /* Code and preformatted text */
 .email-content pre {
-  background-color: rgba(55, 65, 81, 0.5);
-  border: 1px solid rgba(75, 85, 99, 0.3);
-  border-radius: 6px;
-  padding: 1em;
+  background-color: rgb(var(--color-muted) / 0.5);
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-base);
+  padding: var(--spacing-4);
   overflow-x: auto;
-  margin: 1em 0;
-  color: white;
-  font-family: 'Courier New', Courier, monospace;
+  margin: var(--spacing-4) 0;
+  color: rgb(var(--color-foreground));
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 
 .email-content code {
-  background-color: rgba(55, 65, 81, 0.5);
-  border: 1px solid rgba(75, 85, 99, 0.3);
-  border-radius: 3px;
-  padding: 0.2em 0.4em;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.9em;
-  color: white;
+  background-color: rgb(var(--color-muted) / 0.5);
+  border: 1px solid rgb(var(--color-border));
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-1) var(--spacing-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: rgb(var(--color-foreground));
 }
 
 /* Blockquotes */
 .email-content blockquote {
-  border-left: 4px solid #60a5fa;
-  margin: 1em 0;
-  padding-left: 1em;
-  color: #d1d5db;
+  border-left: var(--spacing-1) solid rgb(var(--color-primary));
+  margin: var(--spacing-4) 0;
+  padding-left: var(--spacing-4);
+  color: rgb(var(--color-muted-foreground));
   font-style: italic;
 }
 
 /* Dividers */
 .email-content hr {
   border: none;
-  border-top: 1px solid rgba(75, 85, 99, 0.3);
-  margin: 2em 0;
+  border-top: 1px solid rgb(var(--color-border));
+  margin: var(--spacing-8) 0;
 }
-
-/* Tables - moved to better section below */
 
 /* Ensure text elements inherit color by default */
 .email-content * {
@@ -175,7 +216,7 @@
 .email-content [style*="color:#000000"],
 .email-content [style*="color:#000"],
 .email-content [style*="color:black"] {
-  color: #e5e7eb !important;
+  color: rgb(var(--color-foreground)) !important;
 }
 
 /* Handle background colors that might make text invisible */
@@ -191,8 +232,8 @@
 .email-content [style*="background:white"],
 .email-content [style*="background: #ffffff"],
 .email-content [style*="background:#ffffff"] {
-  background-color: rgba(55, 65, 81, 0.3) !important;
-  background: rgba(55, 65, 81, 0.3) !important;
+  background-color: rgb(var(--color-muted) / 0.3) !important;
+  background: rgb(var(--color-muted) / 0.3) !important;
 }
 
 /* Override common very light backgrounds only */
@@ -200,7 +241,7 @@
 .email-content [style*="background-color: #f9f"],
 .email-content [style*="background-color:#f8f"],
 .email-content [style*="background-color:#f9f"] {
-  background-color: rgba(55, 65, 81, 0.2) !important;
+  background-color: rgb(var(--color-muted) / 0.2) !important;
 }
 
 /* Specific overrides for common email patterns */
@@ -213,14 +254,14 @@
 .email-content th[bgcolor="white"],
 .email-content th[bgcolor="#ffffff"],
 .email-content th[bgcolor="#fff"] {
-  background-color: rgba(55, 65, 81, 0.3) !important;
+  background-color: rgb(var(--color-muted) / 0.3) !important;
 }
 
 /* Handle font tags - only override pure black */
 .email-content font[color="black"],
 .email-content font[color="#000000"],
 .email-content font[color="#000"] {
-  color: #e5e7eb !important;
+  color: rgb(var(--color-foreground)) !important;
 }
 
 /* Center tag support */
@@ -235,7 +276,7 @@
   border-collapse: collapse;
   width: 100%;
   margin: 1em 0;
-  color: white;
+  color: rgb(var(--color-foreground));
   background-color: transparent;
 }
 
@@ -244,12 +285,12 @@
   padding: 0.5em;
   text-align: left;
   color: inherit;
-  border: 1px solid rgba(75, 85, 99, 0.3);
+  border: 1px solid rgb(var(--color-border));
   vertical-align: top;
 }
 
 .email-content th {
-  background-color: rgba(55, 65, 81, 0.5);
+  background-color: rgb(var(--color-muted) / 0.5);
   font-weight: 600;
 }
 
@@ -259,48 +300,24 @@
   border: none;
 }
 
-.email-content table table td,
-.email-content table table th {
+.email-content table table th,
+.email-content table table td {
   border: none;
-  padding: 0.25em;
 }
 
-/* Email-specific layout fixes */
-.email-content [align="center"] {
-  text-align: center;
-}
-
-.email-content [align="left"] {
-  text-align: left;
-}
-
-.email-content [align="right"] {
-  text-align: right;
-}
-
-.email-content [valign="top"] {
-  vertical-align: top;
-}
-
-.email-content [valign="middle"] {
-  vertical-align: middle;
-}
-
-.email-content [valign="bottom"] {
-  vertical-align: bottom;
-}
-
-/* Responsive design */
+/* Responsive handling */
 @media (max-width: 768px) {
   .email-content {
-    font-size: 16px;
+    padding: var(--spacing-3);
+    font-size: var(--font-size-sm);
   }
-  
+
+  .email-content table {
+    font-size: var(--font-size-xs);
+  }
+
   .email-content img {
     max-width: 100%;
-  }
-  
-  .email-content table {
-    font-size: 14px;
+    height: auto;
   }
 }

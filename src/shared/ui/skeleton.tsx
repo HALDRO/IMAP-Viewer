@@ -1,17 +1,12 @@
-/**
- * @file Skeleton loading component using ShadCN UI
- */
-import * as React from "react"
-
-import { cn } from "../utils/utils"
+import { cn } from "@/shared/utils/utils"
 
 function Skeleton({
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>): React.JSX.Element {
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      className={cn("animate-pulse rounded-md bg-primary/10", className)}
       {...props}
     />
   )

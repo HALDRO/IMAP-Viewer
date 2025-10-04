@@ -1,10 +1,12 @@
 /**
- * @file Universal settings section component for consistent layout and styling
+ * @file Universal settings section component with centered headers
+ * @description Redesigned section component with centered headers and descriptions. Ensures consistent appearance of all settings sections with icons, titles and content. Automatically adapts to content and supports optional descriptions.
  */
 
-import * as React from "react"
-import { LucideIcon } from "lucide-react"
-import { cn } from "../utils/utils"
+import type { LucideIcon } from 'lucide-react'
+import type * as React from 'react'
+
+import { cn } from '../utils/utils'
 
 export interface SettingsSectionProps {
   /** Section title */
@@ -21,7 +23,7 @@ export interface SettingsSectionProps {
 
 /**
  * Universal settings section component with consistent header and styling
- * 
+ *
  * @example
  * ```tsx
  * <SettingsSection title="Connection" icon={Shield} description="Connection settings">
@@ -35,32 +37,30 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   icon: Icon,
   description,
   children,
-  className
+  className,
 }) => {
   return (
-    <div
-      className={cn(
-        "rounded-lg border border-border/50",
-        className
-      )}
-    >
+    <div className={cn('rounded-lg border border-border/50', className)}>
       {/* Section Header */}
-      <div style={{ paddingTop: '3px', paddingBottom: '5px', paddingLeft: '12px', paddingRight: '12px' }}>
-        <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+      <div
+        style={{
+          paddingTop: '3px',
+          paddingBottom: '5px',
+          paddingLeft: '12px',
+          paddingRight: '12px',
+        }}
+      >
+        <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center justify-center gap-1.5">
           <Icon size={12} className="text-muted-foreground" />
           {title}
         </h5>
         {description && (
-          <p className="text-xs text-muted-foreground/80 mt-1">
-            {description}
-          </p>
+          <p className="text-xs text-muted-foreground/80 mt-1 text-center">{description}</p>
         )}
       </div>
 
       {/* Section Content */}
-      <div className="space-y-2 px-3 pb-2">
-        {children}
-      </div>
+      <div className="space-y-2 px-3 pb-2">{children}</div>
     </div>
   )
 }

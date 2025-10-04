@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Next.js App",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/next/dist/bin/next",
+      "args": ["dev", "--turbo", "-p", "3001"],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug Server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/server/main.ts",
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx"]
+    },
+    {
+      "name": "Debug Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "--reporter=verbose"],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

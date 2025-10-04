@@ -1,10 +1,10 @@
 /**
  * @file Component that shows a loading skeleton for the email list.
  */
-import React from 'react';
+import type React from 'react'
 
 interface EmailListSkeletonProps {
-  count?: number;
+  count?: number
 }
 
 /**
@@ -12,9 +12,13 @@ interface EmailListSkeletonProps {
  */
 const EmailListSkeleton: React.FC<EmailListSkeletonProps> = ({ count = 10 }) => {
   return (
-    <div className="animate-pulse bg-[#121212] text-white h-full" role="status" aria-label="Loading emails">
+    <output
+      className="animate-pulse bg-background text-foreground h-full"
+      aria-label="Loading emails"
+    >
       {Array.from({ length: count }, (_, index) => (
         <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: Static list, index is fine for key
           key={`skeleton-item-${index}`}
           className="p-3 border-b border-gray-800/20 flex items-start gap-3"
           aria-hidden="true"
@@ -23,8 +27,8 @@ const EmailListSkeleton: React.FC<EmailListSkeletonProps> = ({ count = 10 }) => 
           <div className="flex items-center h-6 pt-0.5">
             <div className="w-4 h-4 rounded bg-gray-800/60" />
           </div>
-          
-          <div className="flex-grow min-w-0">
+
+          <div className="grow min-w-0">
             {/* From & Date row */}
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center space-x-3">
@@ -45,8 +49,8 @@ const EmailListSkeleton: React.FC<EmailListSkeletonProps> = ({ count = 10 }) => 
         </div>
       ))}
       <span className="sr-only">Loading email list...</span>
-    </div>
-  );
-};
+    </output>
+  )
+}
 
-export default EmailListSkeleton; 
+export default EmailListSkeleton
